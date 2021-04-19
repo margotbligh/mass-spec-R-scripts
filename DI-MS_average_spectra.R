@@ -117,7 +117,7 @@ ggplot() +
 dev.off()
 
 
-#4. Filter spectra by retention time  ------------------------------
+#4. Filter spectra by infusion time  ------------------------------
 #bubble in capillary from 1 min to 1 min 30 s for 1-E1
 #filter time to 30 s to 60 s
 #all others filter from 60 s to 90 s
