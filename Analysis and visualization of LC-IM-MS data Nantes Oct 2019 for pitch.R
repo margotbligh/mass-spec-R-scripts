@@ -28,7 +28,8 @@ fonts <- list(
   `Times New Roman` = "DejaVu Serif"
 )
 font_family<-"sans"
-font_size<-12
+font_size<-10
+font_size_titles<-12
 
 '%!in%' <- function(x,y)!('%in%'(x,y))
 
@@ -153,10 +154,16 @@ lm_canonical_DP4<-lm(log(Intensity_MZ)~Position, canonical_prods[canonical_prods
 # natural log transform (for first order products)
 
 
-png(filename="C:/Users/admin/ownCloud/Deep-water kelp/Presentations/Thesis committee meeting 11May2021/Fig3a_sideprods_05May2021.png",
+wo_stds$DPlabel<-paste("DP", wo_stds$DP, sep="")
+wo_stds$DPlabel<-factor(wo_stds$DPlabel, levels = c("DP5","DP4","DP3"))
+
+wo_stds$RTandDT<-factor(wo_stds$RTandDT, levels = c())
+
+png(filename="C:/Users/admin/ownCloud/Deep-water kelp/Presentations/Thesis committee meeting 11May2021/Fig3a_sideprods_06May2021.png",
     height = 12, width=18.9, units = "cm", res = 200)
 ggplot()+
   geom_point(data=wo_stds,aes(x=Position,y=log(Intensity_MZ),fill=RTandDT,), pch=21,size=3, alpha=0.5)+
+  scale_fill_discrete(name="Features", guide=guide_legend(reverse=T))+
 #  scale_y_continuous(trans = scales::log_trans())+
 
   stat_cor(data=wo_stds[which(wo_stds$RTandDT %in% c("RT=14.2 min DT=4.1 ms", 
@@ -188,10 +195,25 @@ ggplot()+
                 size = 1) +
   xlab("Incubation time (min)")+
   ylab("ln(Intensity)")+
-  facet_grid(cols=vars(DP))+
+  facet_grid(cols=vars(DPlabel))+
   guides(ncol=1)+
-  theme_light()+
-  theme(text = element_text(family = "Helvetica"))
+  theme(axis.text.x= element_text(colour="#000000", size = font_size, family = font_family),
+        axis.text.y = element_text(colour ="#000000", size = font_size, family = font_family),
+        axis.title.y = element_text(colour="#000000", size = font_size_titles, family = font_family),
+        axis.title.x = element_text(colour="#000000", size = font_size_titles, family = font_family),
+        legend.title= element_text(colour="#000000", size = font_size_titles, family = font_family,
+                                   hjust = 0.5),
+        legend.text = element_text(colour="#000000", size = font_size, family = font_family),
+        legend.key = element_blank(),
+        legend.box.background = element_blank(),
+        panel.background = element_rect(colour="#000000", fill=NA),
+        plot.background = element_rect(colour=NA, fill=NA),
+        axis.line = element_line(colour="#000000"),
+        panel.grid.minor = element_blank(),
+        panel.grid.major.y = element_blank(),
+        panel.grid.major.x = element_blank(), 
+        strip.background = element_blank(),
+        strip.text = element_text(colour="#000000", size=font_size, family = font_family))
 dev.off()
 
 #double transform natural log (for second order products)
