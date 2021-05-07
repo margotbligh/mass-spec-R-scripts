@@ -1289,49 +1289,51 @@ eic.df$var <- factor(eic.df$var,
                                 "Carryover"))
 
 
+
+
+
+
+
 #14: Plot EIC ----
 
-# svg("./analysis/analysis_plots/standards-eic-v1.svg",
-#     height = 6,
-#     width = 12)
-# cairo_pdf("./analysis/analysis_plots/standards-eic-v1.pdf",
-#     height = 6,
-#     width = 12)
-# ggplot() +
-#     geom_line(mapping = aes(rt,
-#                             intensity,
-#                             group = feature_number_sample,
-#                             #colour = ion
-#                             ),
-#               data = eic.df,
-#               lwd = 1.2,
-#               colour = "black"
-#               ) +
-#     geom_text(data = eic.apex.labels,
-#                 mapping = aes(rt,
-#                               intensity + 5e5,
-#                               label = label),
-#               family = "Avenir") +
-#     facet_grid(rows = vars(group)) +
-#     labs(x= "Retention time (min)",
-#          y = "Intensity (a.u.)") +
-#     scale_x_continuous(breaks = seq(5, 23, 1),
-#                        limits = c(5,23),
-#                        expand = c(0,0)) +
-#     scale_y_continuous(expand = expansion(mult = c(0.02, 0.1)),
-#                        labels = scales::scientific) +
-#     theme_classic() +
-#     theme(strip.background = element_blank(),
-#           strip.text.y = element_blank(),
-#           strip.text.x =element_blank(),
-#           panel.border = element_rect(colour = "#848587",
-#                                       size = 0.5,
-#                                       fill = NA),
-#           axis.line = element_blank(),
-#           axis.text = element_text(size = 12, family = "Avenir"),
-#           axis.title = element_text(size = 14, family = "Avenir LT 65 Medium"),
-#           legend.position = "bottom") 
-# dev.off()
+svg("./analysis/analysis_plots/standards-eic-v2.svg",
+    height = 6,
+    width = 12)
+cairo_pdf("./analysis/analysis_plots/standards-eic-v2.pdf",
+    height = 5,
+    width = 12)
+ggplot() +
+    geom_line(mapping = aes(rt,
+                            intensity,
+                            group = feature_number_sample),
+              data = eic.df[eic.df$sample != "col3_ExtractionBlank",],
+              lwd = 0.7,
+              colour = "black") +
+    geom_text(data = eic.apex.labels,
+                mapping = aes(rt,
+                              intensity + 5e5,
+                              label = label),
+              family = "Helvetica") +
+    facet_grid(rows = vars(group)) +
+    labs(x= "Retention time (min)",
+         y = "Intensity (a.u.)") +
+    scale_x_continuous(breaks = seq(5, 25, 2.5),
+                       limits = c(5,25),
+                       expand = c(0,0)) +
+    scale_y_continuous(expand = expansion(mult = c(0.02, 0.1)),
+                       labels = scales::scientific) +
+    theme_classic() +
+    theme(strip.background = element_blank(),
+          strip.text.y = element_blank(),
+          strip.text.x =element_blank(),
+          panel.border = element_rect(colour = "#848587",
+                                      size = 0.5,
+                                      fill = NA),
+          axis.line = element_blank(),
+          axis.text = element_text(size = 8, family = "Helvetica"),
+          axis.title = element_text(size = 10, family = "Helvetica"),
+          legend.position = "bottom")
+dev.off()
 
 
 #facet by ion, three columns
@@ -1347,6 +1349,34 @@ eic.df.ionfacet$ion.label <- eic.df.ionfacet$ion %>%
     sub("hex-4-procA.*", "DP4", .) %>% 
     sub("hex-6-procA.*", "DP6", .)
 
+
+# par(mfrow=c(4,3), 
+#     mai=c(0.2,0.7,0,0.1), 
+#     omi=c(0.3,0,0,0),
+#     family = "Helvetica")
+# 
+# for (i in 1:3){
+#     
+#     grp = levels(eic.df.ionfacet$var)[i]
+#     
+#     for (j in 1:length(ions.for.facet)){
+#         
+#         ion = ions.for.facet[j]
+#         
+#         tmp <- eic.df.ionfacet[eic.df.ionfacet$var == grp &
+#                                    eic.df.ionfacet$ion == ion,]
+#         #tmp$intensity[tmp$intensity == 0] <- NA
+#         
+#         plot(tmp$rt, tmp$intensity, main=NA, ylab='', xlab='', 
+#              type = "l", xlim = c(5, 25))
+#     }
+# }
+
+png("./analysis/analysis_plots/standards-eic-faceted-v1.png",
+    height = 6,
+    width = 12,
+    units = "in",
+    res = 300)
 
 ggplot() +
     geom_line(mapping = aes(rt,
@@ -1373,11 +1403,11 @@ ggplot() +
                                       fill = NA),
           axis.line = element_blank(),
           text = element_text(family = "Helvetica"),
-          axis.text = element_text(size = 10),
-          axis.title = element_text(size = 8),
+          axis.text = element_text(size = 8),
+          axis.title = element_text(size = 10),
           panel.spacing = unit(1, "lines"),
           legend.position = "none") 
-
+dev.off()
 
 
 
