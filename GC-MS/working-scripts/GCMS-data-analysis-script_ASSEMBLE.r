@@ -23,6 +23,7 @@ library(tidyverse)
 library(reshape2)
 library(stringi)
 library(stringr)
+library(plyr)
 
 ## plotting and having fun with color (can be installed using the Packages interface)
 library(ggplot2)
@@ -138,8 +139,7 @@ raw_metadata$SampleGroup<-paste(raw_metadata$Waterbody,raw_metadata$Condition,
 
 files<-mzMLfiles #input files
 
-pd <- data.frame(sample_name = sub(basename(files), pattern = ".mzML",
-                                   replacement = "", fixed = TRUE),
+pd <- data.frame(sample_name = samplenames %>% sub(".mzML", "", .),
                  sample_group = raw_metadata$SampleGroup,
                  waterbody = raw_metadata$Waterbody,
                  plant = raw_metadata$Plant,
@@ -164,31 +164,12 @@ group_color <- c(scico(5,end=0.9, palette = "lapaz", alpha = 0.5),
                  scico(4, end=0.9, palette = "lajolla", alpha = 0.5))
 
 show_col(group_color)
+names(group_color) <- pd$sample_group %>% unique()
 
-#group_color[2]<-scico(1,palette="roma", alpha=0.2)
-#group_color <- wesanderson::wes_palette("Darjeeling1", n=3)
-names(group_color) <- c("WC_light_ALGAE", "WC_dark_ALGAE", "ASW_blank_NA", 
-                        "ASW_metabolitestd_NA", "MQ_NA_NA",
-                        "PW_dark_SEAGRASS", "PW_light_SEAGRASS",
-                        "WC_dark_SEAGRASS", "WC_light_SEAGRASS")
-leg <- c("WC_light_ALGAE", "WC_dark_ALGAE", "ASW_blank_NA", 
-         "ASW_metabolitestd_NA", "MQ_NA_NA",
-         "PW_dark_SEAGRASS", "PW_light_SEAGRASS",
-         "WC_dark_SEAGRASS", "WC_light_SEAGRASS")
-sample_colors<-c(rep(group_color[1],6),
-                 rep(group_color[2],6),
-                 rep(group_color[3],3),
-                 rep(group_color[4],3),
-                 rep(group_color[5],12),
-                 rep(group_color[6],6),
-                 rep(group_color[7],5),
-                 rep(group_color[6],6),
-                 rep(group_color[7],5),
-                 rep(group_color[8],6),
-                 rep(group_color[9],6),
-                 rep(group_color[8],6),
-                 rep(group_color[9],5))
-
+sample_colors <- pd$sample_group
+sample_colors <- mapvalues(sample_colors, 
+                           from = names(group_color), 
+                           to = group_color)
 
 #4 overview BPC and TIC#####
 ### assess the data with BPC and TIC ###
