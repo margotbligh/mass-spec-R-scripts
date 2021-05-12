@@ -157,6 +157,8 @@ raw_data <- readMSData(files = files,
                        msLevel. = 1, 
                        centroided. = TRUE) 
 
+#for margi only - reassign file paths ----
+raw_peaks@processingData@files <- raw_data@processingData@files
 
 #3.3 define colors #####
 #Define a color palette for the variable "waterbody", which is the sample_group in the data set
@@ -170,6 +172,7 @@ sample_colors <- pd$sample_group
 sample_colors <- mapvalues(sample_colors, 
                            from = names(group_color), 
                            to = group_color)
+names(sample_colors) <- pd$sample_group
 
 #4 overview BPC and TIC#####
 ### assess the data with BPC and TIC ###
@@ -1002,7 +1005,7 @@ bpc_test <- chromatogram(peaks_final, mz = mz_test, rt = rt_test,
 plotChromPeakDensity(bpc_test, param = pdp, col = group_color[peaks_final$sample_group]) 
 # Save result -------------------------------------------------------------
 
-save(peaks_final, file="peaks_final_as XCMSnExp.RData")
+save(peaks_final, file="peaks_final_as_XCMSnExp.RData")
 
 # write MGF file for GNPS
 
@@ -1061,6 +1064,7 @@ filteredMs2Spectra <- formatSpectraForGNPS(filteredMs2Spectra)
 xset <- as(peaks_final, "xcmsSet")
 sampnames(xset) <- pData(peaks_final)$sample_name
 sampclass(xset) <- pData(peaks_final)$sample_group
+save(xset, file = "./results/SeaMet_asXset.RData")
 xset2 <- fillPeaks(xset) 
 save(xset2, file = "SeaMet_final_asXset.RData")
 
