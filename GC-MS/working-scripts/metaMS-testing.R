@@ -1,3 +1,6 @@
+setwd("/Users/margotbligh/Google_Drive/MPI_Masters/Assemble")
+setwd("/Users/margotbligh/Google_Drive/MPI_Masters/Assemble")
+load("RData_metaMStesting_20210511.RData")
 
 # Deconvolution --------------------------------------------------------
 #start with xset from GCMS-data-analysis-script_ASSEMBLE.r
@@ -10,6 +13,13 @@ an <- findIsotopes(an, mzabs=0.01)
 # verify peak groups
 an <- groupCorr(an, 
                 cor_eic_th=0.75)
+
+#peak list
+pl <- getPeaklist(an)
+fwrite(pl,
+       "peaklist.txt",
+       sep = "\t")
+
 # Convert pseudospectra to msp format-----
 #metaMS has function "to.msp" but gives error:
 #Error in allpks[, intensity] : subscript out of bounds
@@ -24,7 +34,7 @@ minfeat = 5
 class(an) == "xsAnnotate" #should be true
 
 #get intensities of samples as dataframe
-allpks <- object@groupInfo
+allpks <- object@groupInfo 
 allpks <- as.data.frame(allpks)
 allpksInt <- select(allpks, contains("Copy"))
 
@@ -102,6 +112,7 @@ centroided(samp13_ribitol.sp) <- TRUE
 dot_ribitol = compareSpectra(ribitol.sp,
                              samp13_ribitol.sp,
                              fun = "dot")
+
 plot(ribitol.sp,
      samp13_ribitol.sp,     
      main = paste0("Ribitol: dot product = ", dot_ribitol))
@@ -136,6 +147,16 @@ centroided(samp13_cholestane.sp) <- TRUE
 dot_cholestane = compareSpectra(cholestane.sp,
                                 samp13_cholestane.sp,
                                 fun = "dot")
+
+
+compareSpectra(cholestane.sp,
+               samp13_cholestane.sp,
+               fun = "common", tolerance = 0.2)
+
+compareSpectra(ribitol.sp,
+               samp13_ribitol.sp,
+               fun = "common", binSize = 0.2)
+
 plot(samp13_cholestane.sp,
      cholestane.sp,     
      main = paste0("Cholestane: dot product = ", dot_cholestane))
@@ -227,6 +248,43 @@ for(i in 1:length(comp.samples.test)){
     }
 }
 
+
+#Filter mona database ----
+#keep only entries with an ion mode slot
+mona.msp.hasionmode <- sapply(mona.msp, function(x) 
+    "Ion_mode" %in% names(x))
+mona.msp2 <- mona.msp[mona.msp.hasionmode]
+
+#keep only entries for positive mode
+mona.msp2.Pionmode <- sapply(mona.msp2, function(x) 
+    x$Ion_mode == "P") 
+mona.msp3 <- mona.msp2[mona.msp2.Pionmode]
+
+#filter by instrument type
+mona.msp.hasinstrtype <- sapply(mona.msp3, function(x) 
+    "Instrument_type" %in% names(x))
+mona.msp4 <- mona.msp3[mona.msp.hasinstrtype]
+
+instr.type <- unlist(sapply(mona.msp3, "[", "Instrument_type"))
+instr.type.uniq <- instr.type %>% unique()
+instr.type.keep <- instr.type.uniq[c(1,3:6,9,12:13)]
+# [1] "EI-B" <- keep                                                                      
+# [2] "CI-B" <- don't keep                                                                      
+# [3] "GC-EI-TOF" <- keep                                                                 
+# [4] "GC-EI-QQ" <- keep                                                                 
+# [5] "GC-EI-Q" <- keep                                                                  
+# [6] "GC-MS" <- keep                                                                    
+# [7] "GC-EI-QqQMS" <- don't keep                                                              
+# [8] "GC-FI-TOF" <- don't keep                                                                 
+# [9] "GC-EI-TOF (Pegasus III TOF-MS system, Leco; GC 6890, Agilent Technologies)" <- keep 
+# [10] "GC-APCI-QTOF" <- don't keep                                                             
+# [11] "GC 6890-5973N" <- don't keep                                                             
+# [12] "single quadrupole"  <- keep                                                        
+# [13] "GC-MS-EI" <- keep  
+
+mona.msp4.instrtype <- unlist(sapply(mona.msp4, function(x) 
+    x$Instrument_type %in% instr.type.keep)) 
+mona.msp5 <- mona.msp4[mona.msp4.instrtype]
 
 
 
