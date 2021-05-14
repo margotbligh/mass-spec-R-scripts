@@ -133,7 +133,7 @@ wo_stds<-wo_stds[wo_stds$RTandDT!="RT=15.5 min DT=6.5 ms",]
 
 
 wo_stds$Position<-NA
-wo_stds$Position[wo_stds$Treatment=="none"]<-NA
+wo_stds$Position[wo_stds$Treatment=="none"]<- -3
 wo_stds$Position[wo_stds$Treatment=="GH16" & wo_stds$Incubation_time_min==0]<-1
 wo_stds$Position[wo_stds$Treatment=="GH16" & wo_stds$Incubation_time_min==10]<-10
 wo_stds$Position[wo_stds$Treatment=="GH16" & wo_stds$Incubation_time_min==20]<-20
@@ -157,10 +157,10 @@ lm_canonical_DP4<-lm(log(Intensity_MZ)~Position, canonical_prods[canonical_prods
 wo_stds$DPlabel<-paste("DP", wo_stds$DP, sep="")
 wo_stds$DPlabel<-factor(wo_stds$DPlabel, levels = c("DP5","DP4","DP3"))
 
-wo_stds$RTandDT<-factor(wo_stds$RTandDT, levels = c())
+#wo_stds$RTandDT<-factor(wo_stds$RTandDT, levels = c())
 
-png(filename="C:/Users/admin/ownCloud/Deep-water kelp/Presentations/Thesis committee meeting 11May2021/Fig3a_sideprods_06May2021.png",
-    height = 12, width=18.9, units = "cm", res = 200)
+png(filename="C:/Users/admin/ownCloud/Deep-water kelp/Presentations/Thesis committee meeting 11May2021/Fig3a_sideprods_09May2021.png",
+    height = 10, width=18.9, units = "cm", res = 200)
 ggplot()+
   geom_point(data=wo_stds,aes(x=Position,y=log(Intensity_MZ),fill=RTandDT,), pch=21,size=3, alpha=0.5)+
   scale_fill_discrete(name="Features", guide=guide_legend(reverse=T))+
@@ -168,25 +168,25 @@ ggplot()+
 
   stat_cor(data=wo_stds[which(wo_stds$RTandDT %in% c("RT=14.2 min DT=4.1 ms", 
                                                      "RT=17.8 min DT=5.3 ms",
-                                                     "RT=25.7 min DT=6.5 ms")),],
+                                                     "RT=25.7 min DT=6.5 ms") & wo_stds$Position!=-3),],
            mapping=aes(x=Position,y=log(Intensity_MZ), label = paste(..rr.label..)),
            r.accuracy = 0.01, 
-             label.y = 18,
-             label.x = 0,
+             label.y = 16,
+             label.x = 15,
              size = 3.5,
              family = font_family) + 
     stat_cor(data=wo_stds[which(wo_stds$RTandDT %in% c("RT=14.2 min DT=4.1 ms", 
                                                        "RT=17.8 min DT=5.3 ms",
-                                                       "RT=25.7 min DT=6.5 ms")),],
+                                                       "RT=25.7 min DT=6.5 ms") & wo_stds$Position!=-3),],
              mapping=aes(x=Position,y=log(Intensity_MZ), label = paste(..p.label..)),
              p.accuracy = 0.001,
-             label.y = 17,
-             label.x = 0,
+             label.y = 15.4,
+             label.x = 15,
              size = 3.5,
              family = font_family) + #add p value
     geom_smooth(data=wo_stds[which(wo_stds$RTandDT %in% c("RT=14.2 min DT=4.1 ms", 
                                                           "RT=17.8 min DT=5.3 ms",
-                                                          "RT=25.7 min DT=6.5 ms")),],
+                                                          "RT=25.7 min DT=6.5 ms") & wo_stds$Position!=-3),],
                 mapping=aes(x=Position,y=log(Intensity_MZ)),
                 method = "lm",
                 se = FALSE,
@@ -201,6 +201,7 @@ ggplot()+
         axis.text.y = element_text(colour ="#000000", size = font_size, family = font_family),
         axis.title.y = element_text(colour="#000000", size = font_size_titles, family = font_family),
         axis.title.x = element_text(colour="#000000", size = font_size_titles, family = font_family),
+        legend.position = "none",
         legend.title= element_text(colour="#000000", size = font_size_titles, family = font_family,
                                    hjust = 0.5),
         legend.text = element_text(colour="#000000", size = font_size, family = font_family),
@@ -213,7 +214,8 @@ ggplot()+
         panel.grid.major.y = element_blank(),
         panel.grid.major.x = element_blank(), 
         strip.background = element_blank(),
-        strip.text = element_text(colour="#000000", size=font_size, family = font_family))
+        strip.text = element_text(colour="#000000", size=font_size, family = font_family))+
+  geom_rect(data=wo_stds, mapping = aes(xmin = -Inf, xmax=-1, ymin=-Inf, ymax=Inf), alpha=.002)
 dev.off()
 
 
