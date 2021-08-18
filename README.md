@@ -29,6 +29,10 @@ None yet :upside_down_face:
 
 ### LC-MS working scripts
 
+*  [_**a-mannan_GH99_PL29_v3.R**_](./LC-MS/working-scripts/a-mannan_GH99_PL29_v3.R)
+
+Data: non-derivatised alpha-mannan digests. Identifies and annotates features. Extract associated MS2 spectra. Scan MS2 for signficant neutral losses and fragment ions. Margot only
+
 *  [_**workflow-test_analysis.R**_](./LC-MS/working-scripts/workflow-test_analysis.R)
 
 Data: standards and blanks for workflow including procainamide derivatisation. Final output: extracted ion chromatograms for identified features and fluorescence chromatogram. Margot only
