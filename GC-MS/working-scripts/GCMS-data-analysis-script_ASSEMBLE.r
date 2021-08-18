@@ -3,7 +3,7 @@
 #Margi set working directory and load existing data:
 setwd("/Users/margotbligh/Google_Drive/MPI_Masters/Assemble")
 load("./results/SeaMet_final_asXset.RData")
-load("raw_peaks_28Jan2021_algaeparams.RData")
+load("./results/raw_peaks_28Jan2021_algaeparams.RData")
 
 #1 packages########################
 ### loading required packages ###
@@ -23,6 +23,7 @@ library(tidyverse)
 library(reshape2)
 library(stringi)
 library(stringr)
+library(plyr)
 
 ## plotting and having fun with color (can be installed using the Packages interface)
 library(ggplot2)
@@ -60,143 +61,85 @@ mzMLfiles = list.files(data_dir,
                        recursive = TRUE, 
                        full.names = TRUE, 
                        pattern = ".mzML")
-
 ### create metadata ###
-#vector with sample type
-temp1_samplename<-unlist(strsplit(mzMLfiles,"/"))
-temp2_samplename<-temp1_samplename[seq(10,760,10)]
+#get only file names
+samplenames <- basename(mzMLfiles)
 
-#create empty data frame
-raw_metadata<-data.frame(plant = character(), 
-                         waterbody = character(),
-                         samplingtime = character(),
-                         condition = character(),
-                         replicate = integer(),
-                         seametdate = character(),
-                         runinsequence = integer(),
-                         enriched13C = character(),
-                         stringsAsFactors = FALSE)
+#make dataframe with most variables filled in
+raw_metadata<-data.frame(samplename = samplenames,
+                         Plant = samplenames %>% 
+                           sub("^A_.*", "ALGAE", .) %>% 
+                           sub("^S_.*", "SEAGRASS", .) %>% 
+                           sub("^BLK_.*|^ASW_.*", "NA", .), 
+                         Waterbody = samplenames %>% 
+                           sub("^BLK_.*", "MQ", .) %>% 
+                           sub("^ASW_.*", "ASW", .) %>% 
+                           sub("^[AS]_WC.*", "WC", .) %>% 
+                           sub("^S_PW.*", "PW", .),
+                         SamplingTime = samplenames %>% 
+                           sub("^[AS]_[PW][WC]\\d{1,2}[Il]_.*", "I", .) %>% 
+                           sub("^[AS]_[PW][WC]\\d{1,2}E_.*", "E", .) %>% 
+                           sub("^BLK_.*|^ASW_.*", "NA", .),
+                         Condition = samplenames %>% 
+                           sub("^A_\\D{2}[123].*", "light", .) %>% 
+                           sub("^A_\\D{2}[456].*", "dark", .) %>% 
+                           sub("^BLK_.*", "NA", .) %>% 
+                           sub("^ASW_blank.*", "blank", .) %>% 
+                           sub("^ASW_met.*", "metabolitestd", .) %>% 
+                           sub("^S_\\D{2}[123789]\\D.*", "light", .) %>% 
+                           sub("^S_\\D{2}[456]\\D.*", "dark", .) %>% 
+                           sub("^S_\\D{2}\\d{2}.*", "dark", .),
+                         Replicate = "NA",
+                         SeametDate = "NA",
+                         RunInSequence = "NA",
+                         Enrichment13C = samplenames %>% 
+                           sub("^A_.*|^BLK_.*|^ASW_.*", "NO", .) %>% 
+                           sub("^S_\\D{2}[123456]\\D_.*", "NO", .) %>% 
+                           sub("^S_.*", "YES", .))
 
-#create empty temporary vectors
-temp_plant<-NULL
-temp_waterbody<-NULL
-temp_samplingtime<-NULL
-temp_condition<-NULL
-temp_replicate<-NULL
-temp_seametdate<-NULL
-temp_runinsequence<-NULL
-temp_enriched13C<-NULL
+#fill in Replicate
+x <- which(raw_metadata$Plant != "NA" & raw_metadata$Condition == "light" &
+             raw_metadata$Enrichment13C == "NO")
+raw_metadata$Replicate[x] <- raw_metadata$samplename[x] %>% 
+  sub("[AS]_\\D{2}", "", .) %>% sub("\\D_.*", "", .) %>% as.numeric(.)
+x <- which(raw_metadata$Plant != "NA" & raw_metadata$Condition == "dark" &
+             raw_metadata$Enrichment13C == "NO")
+raw_metadata$Replicate[x] <- raw_metadata$samplename[x] %>% 
+  sub("[AS]_\\D{2}", "", .) %>% sub("\\D_.*", "", .) %>% as.numeric(.) %>% - 3
+x <- which(raw_metadata$Plant == "SEAGRASS" & raw_metadata$Condition == "light" &
+             raw_metadata$Enrichment13C == "YES") 
+raw_metadata$Replicate[x] <- raw_metadata$samplename[x] %>% 
+  sub("[AS]_\\D{2}", "", .) %>% sub("\\D_.*", "", .) %>% as.numeric(.) %>% - 6
+x <- which(raw_metadata$Plant == "SEAGRASS" & raw_metadata$Condition == "dark" &
+             raw_metadata$Enrichment13C == "YES") 
+raw_metadata$Replicate[x] <- raw_metadata$samplename[x] %>% 
+  sub("[AS]_\\D{2}", "", .) %>% sub("\\D_.*", "", .) %>% as.numeric(.) %>% - 9
 
-#run for loop to extract information from sample names and fill into metadata data frame
-for (i in seq(1,length(temp2_samplename),1)){
-  if (grepl("BLK",temp2_samplename[i])){
-    BLK_temp<-unlist(strsplit(temp2_samplename[i],"_"))
-    temp_plant<-"NA"
-    temp_waterbody<-"MQ"
-    temp_samplingtime<-"NA"
-    temp_condition<-"NA"
-    temp_replicate<-"NA"
-    temp_seametdate<-BLK_temp[2]
-    RUN_temp<-unlist(strsplit(BLK_temp[3]," "))
-    temp_runinsequence<-RUN_temp[1]
-    temp_enriched13C<-"NO"
-  }
-  if (grepl("ASW",temp2_samplename[i])){
-    ASW_temp<-unlist(strsplit(temp2_samplename[i],"_"))
-    temp_plant<-"NA"
-    temp_waterbody<-"ASW"
-    temp_samplingtime<-"NA"
-    temp_condition<-ASW_temp[2]
-    temp_replicate<-"NA"
-    temp_seametdate<-ASW_temp[3]
-    RUN_temp<-unlist(strsplit(ASW_temp[4]," "))
-    temp_runinsequence<-RUN_temp[1]
-    temp_enriched13C<-"NO"
-  }
-  if (grepl("A_",temp2_samplename[i])){
-    ALGAE_temp<-unlist(strsplit(temp2_samplename[i],"_"))
-    temp_plant<-"ALGAE"
-    EXP_temp<-gsub("[^a-zA-Z]", "_", ALGAE_temp[2])
-    EXP_temp2<-unlist(strsplit(EXP_temp, "_"))
-    temp_waterbody<-EXP_temp2[1]
-    temp_samplingtime<-EXP_temp2[2]
-    REP_COND_temp<-str_extract(ALGAE_temp[2],"[0-9]+")
-    if (REP_COND_temp <= 3){
-      temp_condition<-"light"
-      temp_replicate<-REP_COND_temp
-    }
-    if (REP_COND_temp >=4){
-      temp_condition<-"dark"
-      temp_replicate<-as.numeric(REP_COND_temp)-3
-    }
-    temp_seametdate<-ALGAE_temp[3]
-    RUN_temp<-unlist(strsplit(ALGAE_temp[4]," "))
-    temp_runinsequence<-RUN_temp[1]
-    temp_enriched13C<-"NO"
-  }
-  if (grepl("S_",temp2_samplename[i])){
-    SEAGRASS_temp<-unlist(strsplit(temp2_samplename[i],"_"))
-    temp_plant<-"SEAGRASS"
-    EXP_temp<-gsub("[^a-zA-Z]", "_", SEAGRASS_temp[2])
-    EXP_temp2<-unlist(strsplit(EXP_temp, "_"))
-    temp_waterbody<-EXP_temp2[1]
-    temp_samplingtime<-EXP_temp2[length(EXP_temp2)]
-    REP_COND_temp<-str_extract(SEAGRASS_temp[2],"[0-9]+")
-    if (as.numeric(REP_COND_temp) <= 3){
-      temp_condition<-"light"
-      temp_replicate<-REP_COND_temp
-      temp_enriched13C<-"NO"
-    }
-    if (as.numeric(REP_COND_temp) >=4 && as.numeric(REP_COND_temp) <=6){
-      temp_condition<-"dark"
-      temp_replicate<-as.numeric(REP_COND_temp)-3
-      temp_enriched13C<-"NO"
-    }
-    if (as.numeric(REP_COND_temp) >=7 && as.numeric(REP_COND_temp) <=9){
-      temp_condition<-"light"
-      temp_replicate<-as.numeric(REP_COND_temp)-6
-      temp_enriched13C<-"YES"
-    }
-    if (as.numeric(REP_COND_temp) >=10){
-      temp_condition<-"dark"
-      temp_replicate<-as.numeric(REP_COND_temp)-9
-      temp_enriched13C<-"YES"
-    }
-    temp_seametdate<-SEAGRASS_temp[3]
-    RUN_temp<-unlist(strsplit(SEAGRASS_temp[4]," "))
-    temp_runinsequence<-RUN_temp[1]
-  }
-  raw_metadata<-rbind(raw_metadata, c(temp_plant, 
-                                      temp_waterbody, 
-                                      temp_samplingtime,
-                                      temp_condition,
-                                      temp_replicate,
-                                      temp_seametdate,
-                                      temp_runinsequence,
-                                      temp_enriched13C))
-  colnames(raw_metadata)<-c("Plant", "Waterbody", "SamplingTime", "Condition", 
-                            "Replicate", "SeametDate", "RunInSequence", "Enrichment13C")
-  temp_plant<-NULL
-  temp_waterbody<-NULL
-  temp_samplingtime<-NULL
-  temp_condition<-NULL
-  temp_replicate<-NULL
-  temp_seametdate<-NULL
-  temp_runinsequence<-NULL
-  temp_enriched13C<-NULL
-}
+#fill in SeametDate and RunInSequence
+x <- which(raw_metadata$Waterbody != "MQ") 
+raw_metadata$SeametDate[x] <- str_split(samplenames[x], "_| -") %>% 
+  sapply( "[", 3 )
+raw_metadata$RunInSequence[x] <- str_split(samplenames[x], "_| -") %>% 
+  sapply( "[", 4 )
+x <- which(raw_metadata$Waterbody == "MQ") 
+raw_metadata$SeametDate[x] <- str_split(samplenames[x], "_| -") %>% 
+  sapply( "[", 2 )
+raw_metadata$RunInSequence[x] <- str_split(samplenames[x], "_| -") %>% 
+  sapply( "[", 3 )
 
+#remove sample name column
+raw_metadata$samplename <- NULL
+
+#create SampleGroup column
 raw_metadata$SampleGroup<-paste(raw_metadata$Waterbody,raw_metadata$Condition, 
                                 raw_metadata$Plant, sep="_")
-
 
 #3.2 load data ####
 ### import data with information ###
 
 files<-mzMLfiles #input files
 
-pd <- data.frame(sample_name = sub(basename(files), pattern = ".mzML",
-                                   replacement = "", fixed = TRUE),
+pd <- data.frame(sample_name = samplenames %>% sub(".mzML", "", .),
                  sample_group = raw_metadata$SampleGroup,
                  waterbody = raw_metadata$Waterbody,
                  plant = raw_metadata$Plant,
@@ -214,6 +157,8 @@ raw_data <- readMSData(files = files,
                        msLevel. = 1, 
                        centroided. = TRUE) 
 
+#for margi only - reassign file paths ----
+raw_peaks@processingData@files <- raw_data@processingData@files
 
 #3.3 define colors #####
 #Define a color palette for the variable "waterbody", which is the sample_group in the data set
@@ -221,31 +166,13 @@ group_color <- c(scico(5,end=0.9, palette = "lapaz", alpha = 0.5),
                  scico(4, end=0.9, palette = "lajolla", alpha = 0.5))
 
 show_col(group_color)
+names(group_color) <- pd$sample_group %>% unique()
 
-#group_color[2]<-scico(1,palette="roma", alpha=0.2)
-#group_color <- wesanderson::wes_palette("Darjeeling1", n=3)
-names(group_color) <- c("WC_light_ALGAE", "WC_dark_ALGAE", "ASW_blank_NA", 
-                        "ASW_metabolitestd_NA", "MQ_NA_NA",
-                        "PW_dark_SEAGRASS", "PW_light_SEAGRASS",
-                        "WC_dark_SEAGRASS", "WC_light_SEAGRASS")
-leg <- c("WC_light_ALGAE", "WC_dark_ALGAE", "ASW_blank_NA", 
-         "ASW_metabolitestd_NA", "MQ_NA_NA",
-         "PW_dark_SEAGRASS", "PW_light_SEAGRASS",
-         "WC_dark_SEAGRASS", "WC_light_SEAGRASS")
-sample_colors<-c(rep(group_color[1],6),
-                 rep(group_color[2],6),
-                 rep(group_color[3],3),
-                 rep(group_color[4],3),
-                 rep(group_color[5],12),
-                 rep(group_color[6],6),
-                 rep(group_color[7],5),
-                 rep(group_color[6],6),
-                 rep(group_color[7],5),
-                 rep(group_color[8],6),
-                 rep(group_color[9],6),
-                 rep(group_color[8],6),
-                 rep(group_color[9],5))
-
+sample_colors <- pd$sample_group
+sample_colors <- mapvalues(sample_colors, 
+                           from = names(group_color), 
+                           to = group_color)
+names(sample_colors) <- pd$sample_group
 
 #4 overview BPC and TIC#####
 ### assess the data with BPC and TIC ###
@@ -1078,7 +1005,7 @@ bpc_test <- chromatogram(peaks_final, mz = mz_test, rt = rt_test,
 plotChromPeakDensity(bpc_test, param = pdp, col = group_color[peaks_final$sample_group]) 
 # Save result -------------------------------------------------------------
 
-save(peaks_final, file="peaks_final_as XCMSnExp.RData")
+save(peaks_final, file="peaks_final_as_XCMSnExp.RData")
 
 # write MGF file for GNPS
 
@@ -1137,6 +1064,7 @@ filteredMs2Spectra <- formatSpectraForGNPS(filteredMs2Spectra)
 xset <- as(peaks_final, "xcmsSet")
 sampnames(xset) <- pData(peaks_final)$sample_name
 sampclass(xset) <- pData(peaks_final)$sample_group
+save(xset, file = "./results/SeaMet_asXset.RData")
 xset2 <- fillPeaks(xset) 
 save(xset2, file = "SeaMet_final_asXset.RData")
 
