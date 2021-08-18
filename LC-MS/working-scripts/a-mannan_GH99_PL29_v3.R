@@ -359,6 +359,7 @@ peaks <- rbind.fill(peaks_noiso,
 
 #13: Annotate features based on predictions----
 #import prediction table
+#see https://github.com/margotbligh/sugarMassesPredict
 #created with: sugarMassesPredict.py -dp 1 7 -p 0 -m sulphate unsaturated -i neg -s 175 1400
 mz_predicted <- fread("predicted-masses-dp1to7-sulphatedhexose-unsaturated.txt")
 
@@ -528,7 +529,6 @@ pal2 <- hcl.colors(n = length(unique(res2.groups)),
                    palette = "Dark3")
 
 #plot for each ion the full and restricted rt chromatograms by group
-
 for (i in 1:length(unique(ions.rt.found.vector))){
     ion = ions.rt.found.vector[i]
     rt = ions.rt.found.vector[i] %>% 
@@ -610,6 +610,46 @@ for (i in 1:length(unique(ions.rt.found.vector))){
     
     dev.off()
 }
+
+#plot just the EIC for hex-1-sulphate [M-H]- in standards
+ion = "hex-1-sulphate-1: [M-H]-_rt2.3" #picked one rt randomly
+
+df1 <- res2.df %>% 
+    filter(between(rt, 0, 5)) %>% 
+    filter(ion == !!ion) %>% 
+    filter(group == "standard")
+
+pal2 <- hcl.colors(n = length(pd$name[pd$sample_type == "standard"]),
+                   palette = "Dark3")
+names(pal2) <- pd$name[pd$sample_type == "standard"]
+
+cairo_pdf("./analysis/analysis_plots/mannose-2-sulphate_standards_eic.pdf",
+          width = 12,
+          height = 9)
+ggplot() +
+    geom_line(mapping = aes(rt,
+                            intensity,
+                            colour = sample),
+              data = df1,
+              lwd = 1.2) +
+    scale_colour_manual(values = pal2) +
+    labs(x= "Retention time (min)",
+         y = "Intensity (a.u.)") +
+    facet_grid(rows = vars(sample),
+               scales = "free_y") +
+    theme_classic() +
+    theme(strip.text = element_blank(),
+          axis.text = element_text(size = 12,
+                                   family = "Avenir"),
+          axis.title = element_text(size = 14, 
+                                    family = "Avenir LT 65 Medium"),
+          panel.border = element_rect(colour = "#848587",
+                                      size = 0.5,
+                                      fill = NA),
+          legend.text = element_text(size = 12, 
+                                     family = "Avenir"),
+          axis.line = element_blank())
+dev.off()
 
 #16: Extract MS2 associated with annotated features in final peak list-----
 #get peak info
