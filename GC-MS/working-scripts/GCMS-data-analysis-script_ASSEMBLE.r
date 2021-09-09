@@ -5,6 +5,12 @@ setwd("/Users/margotbligh/Google_Drive/MPI_Masters/Assemble")
 load("./results/SeaMet_final_asXset.RData")
 load("./results/raw_peaks_28Jan2021_algaeparams.RData")
 
+#Hagi set working directory and load existing data:
+setwd("C:/Users/admin/ownCloud/Assemble/Data/SeaMet/GCMS data analysis/")
+load("./results/SeaMet_final_asXset.RData")
+load("./results/raw_peaks_28Jan2021_algaeparams.RData")
+
+
 #1 packages########################
 ### loading required packages ###
 
