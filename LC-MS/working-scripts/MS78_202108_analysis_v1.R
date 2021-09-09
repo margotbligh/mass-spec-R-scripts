@@ -1,5 +1,6 @@
-setwd("/Users/margotbligh/Google_Drive/MPI_PhD/Lab-things/alpha-mannan/Polaribacter_Hel1-33-78_enzymes/202108_GH99_PL29")
-load("./analysis/RData/RData_20210818.RData")
+setwd("/Users/margotbligh/Google_Drive/MPI_PhD/Lab-things/FITDOG/methods-dev/MS78_202108")
+load("./analysis/RData/RData_20210905.RData")
+
 #1: Install packages --------------------------------------------------------
 library(BiocStyle)
 library(xcms)
@@ -18,37 +19,51 @@ library(wesanderson)
 
 #2. Import and inspect MS data --------------------------------------------------------
 #get file paths to mzML files
-fp <- dir(path = "data/mzML-files/MS31_20210813", 
+fp <- dir(path = "mzML-files", 
           all.files = FALSE, 
-          full.names = TRUE)
+          full.names = TRUE,
+          recursive = TRUE,
+          include.dirs = FALSE)
+
+
 
 #create phenodata data.frame
 #each sample must have a unique name!
 pd <- data.frame(name = basename(fp) %>%
-                     sub("MS31_20210813_", "", .) %>% 
-                     sub("Std_", "", .) %>% 
-                     sub("_\\d\\d.mzML", "", .),
+                     sub("MS78_", "", .) %>% 
+                     sub(".mzML", "", .),
                  sample_type = basename(fp) %>% 
-                     sub(".*PL29_peak.*", "PL29 purified oligo", .) %>% 
-                     sub(".*GH99_peak.*", "GH99 purified oligo", .) %>%
-                     sub(".*neg_.*", "negative control", .) %>% 
-                     sub(".*GH99_[ABC]_.*", "GH99 digest", .) %>% 
-                     sub(".*PL29_[ABC]_.*", "PL29 digest", .) %>% 
-                     sub(".*Std.*", "standard", .) %>% 
+                     sub(".*_0min_.*|.*_h2o_.*", "neg", .) %>% 
+                     sub(".*_60min_.*", "FITDOG", .) %>% 
+                     sub(".*blank.*", "solvent blank", ., ignore.case = T) %>% 
                      sub(".*HILIC.*", "HILIC standard", .) %>% 
-                     sub(".*Solvent.*", "solvent blank", .),
-                 enzyme = basename(fp) %>% 
-                     sub(".*PL29.*", "PL29", .) %>% 
-                     sub(".*GH99.*", "GH99", .) %>% 
-                     sub(".*Std.*|.*HILIC.*|.*Solvent.*", "", .),
-                 injection = basename(fp) %>% 
-                     sub(".*[ABC]_|.*g_|.*d_|.*k\\d_|.*e_", "", .) %>% 
-                     sub(".mzML", "", .) %>% as.numeric(),
+                     sub(".*QC.*", "QC", .),
+                 substrate = basename(fp) %>% 
+                     sub(".*_h2o_.*", "water", .) %>% 
+                     sub(".*_ves_.*", "fucoidan", .) %>% 
+                     sub(".*bic.*", "laminarin", .) %>% 
+                     sub("MS78.*", NA, .),
+                 reduced = basename(fp) %>% 
+                     sub(".*NaBH4_.*", "y", .) %>% 
+                     sub(".*\\dmin_.*", "n", .) %>% 
+                     sub("MS78.*", NA, .),
+                 reactiontime = basename(fp) %>% 
+                     sub(".*_60min_.*", 60, .) %>% 
+                     sub(".*0min_.*", 0, .) %>% 
+                     sub("MS78.*", NA, .),
+                 group = basename(fp) %>% 
+                     sub(".*blank.*", "solvent blank", ., ignore.case = T) %>% 
+                     sub(".*QC.*", "QC", .) %>% 
+                     sub(".*HILIC.*", "HILIC standard", .) %>% 
+                     sub("\\+NaBH4.*", "reduced", .) %>% 
+                     sub("60min", "t=60", .) %>% 
+                     sub("0min", "t=0", .) %>% 
+                     sub(".*h2o", "water", .) %>% 
+                     sub(".*ves", "fucoidan", .) %>% 
+                     sub(".*bic", "laminarin", .) %>% 
+                     sub(".mzML|_\\d{1,2}.mzML", "", .) %>% 
+                     gsub("_", " ", .),
                  stringsAsFactors = FALSE)
-
-pd$name[pd$sample_type == "standard"] <- paste0(pd$name[pd$sample_type == "standard"],
-                                                "_",
-                                                pd$injection[pd$sample_type == "standard"])
 
 #read in data
 all_data <- readMSData(files = fp, 
@@ -85,9 +100,9 @@ save(data_ms2,
 dir.create("./analysis/processing_plots/tic",
            showWarnings = FALSE)
 
-pal_group <- hcl.colors(n = length(unique(pd$sample_type)),
+pal_group <- hcl.colors(n = length(unique(pd$group)),
                         palette = "Dark3")
-names(pal_group) <- unique(pd$sample_type)
+names(pal_group) <- unique(pd$group)
 
 #plot the tic as boxplot
 tc <- split(tic(all_data), 
@@ -98,7 +113,7 @@ cairo_pdf("./analysis/processing_plots/tic/tic_boxplot.pdf",
           height = 9)
 par(mar=c(9,5,1,1))
 boxplot(tc, 
-        col = pal_group[all_data$sample_type],
+        col = pal_group[all_data$group],
         ylab = "intensity", 
         main = "total ion current",
         names = all_data$name,
@@ -116,7 +131,7 @@ for (i in 1:length(pd$name)){
     rt = tic[[i]]@rtime / 60
     intensity = tic[[i]]@intensity
     sample = rep(all_data$name[i], length(rt))
-    group = rep(all_data$sample_type[i], length(rt))
+    group = rep(all_data$group[i], length(rt))
     temp <- data.frame(sample = sample,
                        group = group,
                        rt = rt,
@@ -157,91 +172,93 @@ ggplot() +
 dev.off()
 
 #5: Peak picking (CentWave) ---------------------------
-#set parameters
-cwp<-CentWaveParam()
-cwp@ppm<-1.2
-cwp@peakwidth<-c(7,45)
-cwp@snthresh<-20
-cwp@noise <- 5000
-cwp@prefilter <- c(3, 1000)
-
-
-#check with chromatograms for standard (sulphated mannoase)
 dir.create("./analysis/processing_plots/peakpicking",
            showWarnings = FALSE)
 
-error = 0.0025
-chr1 <- chromatogram(data,
-                     rt = c(50, 400),
-                     mz = c(259.01293 - error,
-                            259.01293 + error))
-chr_cwp1 <- findChromPeaks(chr1, 
-                           param=cwp)
-pal1 <- hcl.colors(n = length(pd$name),
-                   palette = "Dark3")
-cairo_pdf("./analysis/processing_plots/peakpicking/peakpicking_1.3ppm_20sn_pw7to45_noise5000_prefilter3-1000_sulphatedmannose.pdf",
-          family = "Avenir",
-          width = 12,
-          height = 9)
-plot(chr_cwp1,
-     lwd = 2,
-     cex.main = 1,
-     peakCol = pal1[chromPeaks(chr_cwp1)[, "column"]],
-     peakType = "rectangle")
-dev.off()
+#set parameters
+# cwp<-CentWaveParam()
+# cwp@ppm<-1.6
+# cwp@peakwidth<-c(10,100)
+# cwp@snthresh<-5
+
+cwp<-CentWaveParam()
+cwp@ppm<-5
+cwp@peakwidth<-c(10,60)
+cwp@snthresh<-5
+cwp@noise <- 5000
+cwp@prefilter <- c(5, 1000)
+cwp@mzdiff <- 0.001
 
 #pick peaks
 data_peaks<-findChromPeaks(data, 
                            param=cwp)
-data_ms2<-findChromPeaks(data_ms2, 
-                         param=cwp)
-#save as RData objects
-save(data_peaks, 
-     file = "./analysis/RData/data_peaks.RData")
-save(data_ms2, 
-     file = "./analysis/RData/data_ms2.RData")
+
+error = 0.0025
+pal1 <- hcl.colors(n = length(pd$name),
+                   palette = "Dark3")
+groups <- data_peaks$group %>% unique()
+
+#hex-1 m+cl
+chr1 <- chromatogram(data_peaks,
+                     mz = c(215.03279157990	 - error,
+                            215.03279157990	 + error))
+
+
+cairo_pdf("./analysis/processing_plots/peakpicking/peakpicking_5ppm_5sn_pw10to60_noise5000_prefilter5-1000_mzdiff0.001_hex-1_cl-adduct.pdf",
+          family = "Avenir",
+          width = 12,
+          height = 9)
+par(mfrow=c(5,3))
+for (i in 1:length(groups)){
+    plot(chr1[,chr1$group == groups[i]],
+         lwd = 2,
+         cex.main = 1,
+         peakCol = "black",
+         peakType = "rectangle",
+         xlim = c(50, 200),
+         ylim = c(0,1e5),
+         main = groups[i]
+    )
+}
+dev.off()
 
 #6: Group peaks to create "features"---------
 #parameters
-pdp <- PeakDensityParam(sampleGroups = data$sample_type,
+pdp <- PeakDensityParam(sampleGroups = data$group,
                         binSize = 0.005,
                         bw = 6,
-                        minFraction = 0.2) 
+                        minFraction = 0.5) 
 
 #check parameters
 #extract and plot chromatograms to test settings
 dir.create("./analysis/processing_plots/peakgrouping",
            showWarnings = FALSE)
 
-chr_pdp1 <- chromatogram(data_peaks,
-                     rt = c(50, 400),
-                     mz = c(259.01293 - error,
-                            259.01293 + error))
-names(pal1) <- data$name #name palette
+names(pal1) <- data$name
 
-cairo_pdf("./analysis/processing_plots/peakgrouping/peakgrouping_binsize0.005_bw6_sulphatedmannose.pdf",
+cairo_pdf("./analysis/processing_plots/peakgrouping/peakgrouping_binsize0.005_bw6_hex-1_cl-adduct.pdf",
           family = "Avenir",
           width = 12,
           height = 9)
 par(mar=c(4,4,3,10))
-plotChromPeakDensity(chr_pdp1, 
+plotChromPeakDensity(chr1, 
                      col = pal1, 
                      param = pdp,
-                     peakBg = pal1[chromPeaks(chr_pdp1)[, "sample"]],
-                     peakCol = pal1[chromPeaks(chr_pdp1)[, "sample"]],
+                     peakBg = pal1[chromPeaks(chr1)[, "sample"]],
+                     peakCol = pal1[chromPeaks(chr1)[, "sample"]],
                      peakPch = 16)
 legend("topright",
        legend = paste0(seq(1,length(pal1),1),
                        "=",
                        names(pal1)),
-       inset=c(-0.6,0),
+       inset=c(0,0),
        fill = pal1,
        pt.cex = 0.3,
        cex = 0.5,
        bty = "n",
        horiz = FALSE,
        xpd=TRUE,
-       ncol = 2)
+       ncol = 3)
 dev.off()
 
 
@@ -258,15 +275,259 @@ data_peaks_grouped_filled <- fillChromPeaks(data_peaks_grouped)
 save(data_peaks_grouped_filled, 
      file = "./analysis/RData/data_peaks_grouped_filled.RData")
 
-res <- data_peaks_grouped_filled
+#8: PCA plot: filled vs not filled features ----
+dir.create("./analysis/processing_plots/pca",
+           showWarnings = FALSE)
 
-#8: Remove large data files from environment----------
-rm(data, data_peaks, data_peaks_grouped, data_peaks_grouped_filled)    
+##NOT FILLED
+#get intensity values
+ft_ints <- featureValues(data_peaks_grouped)
+ft_ints <- as.data.frame(ft_ints)
+names(ft_ints) <- pd$name
+#log transform
+ft_ints <- log2(ft_ints)
+#replace all NA values with zero
+ft_ints[is.na(ft_ints)] <- 0
+#perform PCA with the intensities mean centered
+pc1 <- prcomp(t(ft_ints), center = TRUE)
+#plot
+tiff("./analysis/processing_plots/pca/pca-unfilled-featureIntensities.tiff",
+     res = 300,
+     height = 9,
+     width = 12,
+     units = "in")
+pcSummary1 <- summary(pc1)
+par(family = "Avenir",
+    mar=c(5,4,2,9))
+plot(pc1$x[, 1], 
+     pc1$x[,2], 
+     pch = 21, 
+     main = "",
+     xlab = paste0("PC1: ", 
+                   format(pcSummary1$importance[2, 1] * 100,
+                          digits = 3), 
+                   " % variance"),
+     ylab = paste0("PC2: ", 
+                   format(pcSummary1$importance[2, 2] * 100,
+                          digits = 3), 
+                   " % variance"),
+     col = "black", 
+     lwd = 1.3,
+     bg = pal_group[pd$group], 
+     cex = 2)
+grid()
+legend("topleft",
+       legend = names(pal_group) %>% unique(),
+       pt.bg = pal_group %>% unique(),
+       col = "black",
+       pch = 21,
+       pt.lwd = 1.3,
+       pt.cex = 2,
+       cex = 0.8,
+       bty = "n",
+       ncol = 1,
+       x.intersp = 0.8,
+       y.intersp = 1.2,
+       inset=c(1,0),
+       xpd=TRUE)
+dev.off()
+
+#essentially no separation into groups, only 20% of variation explained...
+
+
+##FILLED
+#get intensity values
+ft_ints.fl <- featureValues(data_peaks_grouped_filled)
+ft_ints.fl <- as.data.frame(ft_ints.fl)
+names(ft_ints.fl) <- pd$name
+#log transform
+ft_ints.fl <- log2(ft_ints.fl)
+#replace all NA values with zero
+ft_ints.fl[is.na(ft_ints.fl)] <- 0
+#perform PCA with the intensities mean centered
+pc2 <- prcomp(t(ft_ints.fl), center = TRUE)
+#plot
+tiff("./analysis/processing_plots/pca/pca-filled-featureIntensities.tiff",
+     res = 300,
+     height = 9,
+     width = 12,
+     units = "in")
+pcSummary2 <- summary(pc2)
+par(family = "Avenir",
+    mar=c(5,4,2,9))
+plot(pc2$x[, 1], 
+     pc2$x[,2], 
+     pch = 21, 
+     main = "",
+     xlab = paste0("PC1: ", 
+                   format(pcSummary2$importance[2, 1] * 100,
+                          digits = 3), 
+                   " % variance"),
+     ylab = paste0("PC2: ", 
+                   format(pcSummary2$importance[2, 2] * 100,
+                          digits = 3), 
+                   " % variance"),
+     col = "black", 
+     lwd = 1.3,
+     bg = pal_group[pd$group], 
+     cex = 2)
+grid()
+legend("topleft",
+       legend = names(pal_group) %>% unique(),
+       pt.bg = pal_group %>% unique(),
+       col = "black",
+       pch = 21,
+       pt.lwd = 1.3,
+       pt.cex = 2,
+       cex = 0.8,
+       bty = "n",
+       ncol = 1,
+       x.intersp = 0.8,
+       y.intersp = 1.2,
+       inset=c(1,0),
+       xpd=TRUE)
+dev.off()
+
+#HILIC standard VERY separated - can't see separation of others
+#do again without HILIC standard
+
+#get intensity values
+ft_ints.fl <- featureValues(data_peaks_grouped_filled)
+ft_ints.fl <- as.data.frame(ft_ints.fl)
+names(ft_ints.fl) <- pd$name
+#log transform
+ft_ints.fl <- log2(ft_ints.fl)
+#replace all NA values with zero
+ft_ints.fl[is.na(ft_ints.fl)] <- 0
+#remove HILIC standard
+ft_ints.fl <- ft_ints.fl[,grep("HILIC", names(ft_ints.fl), invert = TRUE)]
+#perform PCA with the intensities mean centered
+pc2 <- prcomp(t(ft_ints.fl), center = TRUE)
+#plot
+tiff("./analysis/processing_plots/pca/pca-filled-featureIntensities-noHILICstd.tiff",
+     res = 300,
+     height = 9,
+     width = 12,
+     units = "in")
+pcSummary2 <- summary(pc2)
+par(family = "Avenir",
+    mar=c(5,4,2,9))
+plot(pc2$x[, 1], 
+     pc2$x[,2], 
+     pch = 21, 
+     main = "",
+     xlab = paste0("PC1: ", 
+                   format(pcSummary2$importance[2, 1] * 100,
+                          digits = 3), 
+                   " % variance"),
+     ylab = paste0("PC2: ", 
+                   format(pcSummary2$importance[2, 2] * 100,
+                          digits = 3), 
+                   " % variance"),
+     col = "black", 
+     lwd = 1.3,
+     bg = pal_group[pd$group[pd$group!="HILIC standard"]], 
+     cex = 2)
+grid()
+legend("topleft",
+       legend = names(pal_group) %>% unique(),
+       pt.bg = pal_group %>% unique(),
+       col = "black",
+       pch = 21,
+       pt.lwd = 1.3,
+       pt.cex = 2,
+       cex = 0.8,
+       bty = "n",
+       ncol = 1,
+       x.intersp = 0.8,
+       y.intersp = 1.2,
+       inset=c(1,0),
+       xpd=TRUE)
+text(x = pc2$x[, 1],
+     y = pc2$x[, 2],
+     labels = names(ft_ints.fl),
+     col = "black",
+     pos = 1,
+     cex = 0.5)
+dev.off()
+
+#some very separated, all others in one clump
+#remove very separated and run again
+
+x <- c("20210824_32_bic_60min_39",
+       "20210824_QC_3",
+       "20210826_QC_3",
+       "20210824_Blank_1",
+       "20210826_blank_1")
+
+
+#subset data
+ft_ints.fl2 <- ft_ints.fl %>% dplyr::select(-x)
+#make new palette
+pd2 <- pd[!pd$name %in% x & pd$group != "HILIC standard",]
+pal_group2 <- hcl.colors(n = length(unique(pd2$group)),
+                         palette = "Dark3")
+names(pal_group2) <- unique(pd2$group)
+#perform PCA with the intensities mean centered
+pc2 <- prcomp(t(ft_ints.fl2), center = TRUE)
+#plot
+tiff("./analysis/processing_plots/pca/pca-filled-featureIntensities-noHILICstd-subset.tiff",
+     res = 300,
+     height = 9,
+     width = 12,
+     units = "in")
+pcSummary2 <- summary(pc2)
+par(family = "Avenir",
+    mar=c(5,4,2,9))
+plot(pc2$x[, 1], 
+     pc2$x[,2], 
+     pch = 21, 
+     main = "",
+     xlab = paste0("PC1: ", 
+                   format(pcSummary2$importance[2, 1] * 100,
+                          digits = 3), 
+                   " % variance"),
+     ylab = paste0("PC2: ", 
+                   format(pcSummary2$importance[2, 2] * 100,
+                          digits = 3), 
+                   " % variance"),
+     col = "black", 
+     lwd = 1.3,
+     bg = pal_group[pd2$group], 
+     cex = 2)
+grid()
+legend("topleft",
+       legend = names(pal_group2) %>% unique(),
+       pt.bg = pal_group2 %>% unique(),
+       col = "black",
+       pch = 21,
+       pt.lwd = 1.3,
+       pt.cex = 2,
+       cex = 0.8,
+       bty = "n",
+       ncol = 1,
+       x.intersp = 0.8,
+       y.intersp = 1.2,
+       inset=c(1,0),
+       xpd=TRUE)
+text(x = pc2$x[, 1],
+     y = pc2$x[, 2],
+     labels = names(ft_ints.fl2),
+     col = "black",
+     pos = 1,
+     cex = 0.5)
+dev.off()
+
+#clustering appears quite random... no separation into groups
+#continue with filled data for now?
+
+res <- data_peaks_grouped_filled
+rm(data, data_peaks_grouped, data_peaks, data_peaks_grouped_filled)
 
 #9: Save diffreport of xdata -----
 xset <- as(res, "xcmsSet")
 sampnames(xset) <- pData(res)$name
-sampclass(xset) <- pData(res)$sample_type
+sampclass(xset) <- pData(res)$group
 
 #10. Isotope picking----
 ##create xsannotate object
@@ -293,6 +554,338 @@ an <- groupCorr(an,
 ##Find adducts
 an <- findAdducts(an, 
                     polarity="negative")
+
+
+#16: Compare samples with heatmap ----
+##ALL PEAKS - laminarin
+#add unique rownames
+setDF(pl)
+x <- paste0("rt_",
+            round(pl$rt/60,2),
+            "mz",
+            round(pl$mz,4))
+rownames(pl) <- x
+
+#subset to only have intensity counts
+sampleColNames <- pd$name %>% sub("\\+", ".", .) %>% sub("^2", "X2", .)
+sampleColNames <- sampleColNames[grep("_bic_", sampleColNames)]
+sampleColNames <- sampleColNames[-grep("NaBH4", sampleColNames)]
+
+counts_all <- pl %>% 
+    dplyr::select(sampleColNames)
+
+#change NA to 0
+counts_all[is.na(counts_all)] <- 0
+
+#set factor level
+group <- pd$group[pd$substrate=="laminarin" & pd$reduced == "n"]
+group <- group[!is.na(group)]
+group<-factor(group)
+
+#DGEList:Creates a DGEList object from a table of counts 
+#(rows=features, columns=samples), 
+#group indicator for each column, 
+#library size (optional) and a table of feature annotation (optional).
+y_n_all <- DGEList(counts=counts_all,
+                   group=group)
+#filterByExpr {edgeR}
+#determine which features have sufficiently large counts to be retained for stats
+#output is a logical vector
+keep_n_all <- filterByExpr(y_n_all)
+y_n_all <- y_n_all[keep_n_all,,keep.lib.sizes=FALSE]
+
+#Calculate normalisation factors to scale the raw library sizes
+y_n_all <- calcNormFactors(y_n_all)
+
+#creates a design (or model) matrix, e.g., by expanding factors to a 
+#set of dummy variables (depending on the contrasts) and 
+#expanding interactions similarly.
+design <- model.matrix(~group)
+
+#estimate disparity
+y_n_all <- estimateDisp(y_n_all,design)
+y_n_all <- estimateCommonDisp(y_n_all)
+
+#test difference
+#output:
+#log2-fold-change (logFC), 
+#the average log2-counts-per-million (logCPM), 
+#and the two-sided p-value (PValue).
+tested_n_all <-exactTest(y_n_all)
+hist(tested_n_all$table[,"PValue"], breaks=50)
+
+#extract most different
+result_n_all <- topTags(tested_n_all, 
+                        n=nrow(tested_n_all$table))
+
+#log transform
+dge_n_all <- log2(y_n_all$counts + 1)
+
+#subset
+selY_n_all <- dge_n_all[rownames(result_n_all$table)[result_n_all$table$PValue<0.05 & 
+                                                         result_n_all$table$logFC < -2 |
+                                                         result_n_all$table$PValue<0.05 & 
+                                                         result_n_all$table$logFC > 2],]
+
+
+#make heatmap
+cimColour <- rev(viridis(1000))
+
+par(mar= c(20, 15, 15, 40))
+cim(selY_n_all, 
+    color = cimColour,
+    symkey=FALSE,
+    mar=c(10,20),
+    col.cex = 0.8,
+    #row.sideColors = cimColourRows,
+    row.names = TRUE,
+    #row.cex = 0.8,
+    #keysize = c(0.1, 0.1)
+    #save = "tiff",
+    #name.save = "./analysis/heatmap/heatmap_matched_unmatched.tiff"
+)
+dev.off()
+
+
+##ALL PEAKS - laminarin - reduced
+#subset to only have intensity counts
+sampleColNames <- pd$name %>% sub("\\+", ".", .) %>% sub("^2", "X2", .)
+sampleColNames <- sampleColNames[grep("_bic_", sampleColNames)]
+sampleColNames <- sampleColNames[grep("NaBH4", sampleColNames)]
+
+counts_all <- pl %>% 
+    dplyr::select(sampleColNames)
+
+#change NA to 0
+counts_all[is.na(counts_all)] <- 0
+
+#set factor level
+group <- pd$group[pd$substrate=="laminarin" & pd$reduced == "y"]
+group <- group[!is.na(group)]
+group<-factor(group)
+
+#DGEList:Creates a DGEList object from a table of counts 
+#(rows=features, columns=samples), 
+#group indicator for each column, 
+#library size (optional) and a table of feature annotation (optional).
+y_n_all <- DGEList(counts=counts_all,
+                   group=group)
+#filterByExpr {edgeR}
+#determine which features have sufficiently large counts to be retained for stats
+#output is a logical vector
+keep_n_all <- filterByExpr(y_n_all)
+y_n_all <- y_n_all[keep_n_all,,keep.lib.sizes=FALSE]
+
+#Calculate normalisation factors to scale the raw library sizes
+y_n_all <- calcNormFactors(y_n_all)
+
+#creates a design (or model) matrix, e.g., by expanding factors to a 
+#set of dummy variables (depending on the contrasts) and 
+#expanding interactions similarly.
+design <- model.matrix(~group)
+
+#estimate disparity
+y_n_all <- estimateDisp(y_n_all,design)
+y_n_all <- estimateCommonDisp(y_n_all)
+
+#test difference
+#output:
+#log2-fold-change (logFC), 
+#the average log2-counts-per-million (logCPM), 
+#and the two-sided p-value (PValue).
+tested_n_all <-exactTest(y_n_all)
+hist(tested_n_all$table[,"PValue"], breaks=50)
+
+#extract most different
+result_n_all <- topTags(tested_n_all, 
+                        n=nrow(tested_n_all$table))
+
+#log transform
+dge_n_all <- log2(y_n_all$counts + 1)
+
+#subset
+selY_n_all <- dge_n_all[rownames(result_n_all$table)[result_n_all$table$PValue<0.05 & 
+                                                         result_n_all$table$logFC < -2 |
+                                                         result_n_all$table$PValue<0.05 & 
+                                                         result_n_all$table$logFC > 2],]
+
+
+#make heatmap
+cimColour <- rev(viridis(1000))
+
+par(mar= c(20, 15, 15, 40))
+cim(selY_n_all, 
+    color = cimColour,
+    symkey=FALSE,
+    mar=c(10,20),
+    col.cex = 0.8,
+    #row.sideColors = cimColourRows,
+    row.names = TRUE,
+    #row.cex = 0.8,
+    #keysize = c(0.1, 0.1)
+    #save = "tiff",
+    #name.save = "./analysis/heatmap/heatmap_matched_unmatched.tiff"
+)
+dev.off()
+
+
+lam_reduced <- rownames(result_n_all$table)[result_n_all$table$PValue<0.05 & 
+                                                result_n_all$table$logFC > 2]
+lam_reduced <- data.frame(mz = as.numeric(sub(".*mz","",lam_reduced)),
+                          rt = as.numeric(gsub("rt_|mz.*","",lam_reduced)))
+mz_predicted <- fread("neutral-predicted-sugars_dp1to10_alditol_unsaturated_pentose.txt")
+
+#remove "extra" columns
+extraCol <- c('mass',
+              'formula')
+
+mz_predicted <- mz_predicted %>% 
+    dplyr::select(-all_of(extraCol))
+
+#make long format
+predicted <- mz_predicted %>% 
+    gather(key = "ion",
+           value = "mz",
+           -name,
+           -dp)
+
+#make data.table
+setDT(predicted)
+setDT(lam_reduced)
+#create interval to overlap with (same width as for peak grouping)
+predicted$mz <- as.numeric(predicted$mz)
+predicted$mzmin <- predicted$mz-0.005
+predicted$mzmax <- predicted$mz+0.005
+lam_reduced$mzmin <- lam_reduced$mz-0.005
+lam_reduced$mzmax <- lam_reduced$mz+0.005
+
+#remove NA rows
+predicted <- na.omit(predicted)
+
+#match using foverlaps from data.table (very fast)
+setkey(predicted, mzmin, mzmax)
+lam_reduced <- foverlaps(lam_reduced,
+                         predicted)
+
+#change NA values created during matching (features with no match) to be blank
+#remove extra columns
+lam_reduced$mzmin <- NULL
+lam_reduced$mzmax <- NULL
+
+lam_reduced <- lam_reduced %>% 
+    replace_na(list("name"="",
+                    "ion"= "", 
+                    "mz" = "",
+                    "dp" = ""))
+#only keep matched features
+peaks_matched <- peaks[!peaks$name=="",]
+
+#order by retention time
+peaks_matched <- peaks_matched[order(rt_min),]
+
+#make id and ion column
+peaks_matched$id_ion <- paste0(peaks_matched$name, 
+                               ": ",
+                               peaks_matched$ion)
+
+
+
+##ALL PEAKS - fucoidanm
+#add unique rownames
+setDF(pl)
+x <- paste0("rt_",
+            round(pl$rt/60,2),
+            "mz",
+            round(pl$mz,4))
+rownames(pl) <- x
+
+#subset to only have intensity counts
+sampleColNames <- pd$name %>% sub("\\+", ".", .) %>% sub("^2", "X2", .)
+sampleColNames <- sampleColNames[grep("_ves_", sampleColNames)]
+sampleColNames <- sampleColNames[-grep("NaBH4", sampleColNames)]
+
+counts_all <- pl %>% 
+    dplyr::select(sampleColNames)
+
+#change NA to 0
+counts_all[is.na(counts_all)] <- 0
+
+#set factor level
+group <- pd$group[pd$substrate=="fucoidan" & pd$reduced == "n"]
+group <- group[!is.na(group)]
+group<-factor(group)
+
+#DGEList:Creates a DGEList object from a table of counts 
+#(rows=features, columns=samples), 
+#group indicator for each column, 
+#library size (optional) and a table of feature annotation (optional).
+y_n_all <- DGEList(counts=counts_all,
+                   group=group)
+#filterByExpr {edgeR}
+#determine which features have sufficiently large counts to be retained for stats
+#output is a logical vector
+keep_n_all <- filterByExpr(y_n_all)
+y_n_all <- y_n_all[keep_n_all,,keep.lib.sizes=FALSE]
+
+#Calculate normalisation factors to scale the raw library sizes
+y_n_all <- calcNormFactors(y_n_all)
+
+#creates a design (or model) matrix, e.g., by expanding factors to a 
+#set of dummy variables (depending on the contrasts) and 
+#expanding interactions similarly.
+design <- model.matrix(~group)
+
+#estimate disparity
+y_n_all <- estimateDisp(y_n_all,design)
+y_n_all <- estimateCommonDisp(y_n_all)
+
+#test difference
+#output:
+#log2-fold-change (logFC), 
+#the average log2-counts-per-million (logCPM), 
+#and the two-sided p-value (PValue).
+tested_n_all <-exactTest(y_n_all)
+hist(tested_n_all$table[,"PValue"], breaks=50)
+
+#extract most different
+result_n_all <- topTags(tested_n_all, 
+                        n=nrow(tested_n_all$table))
+
+#log transform
+dge_n_all <- log2(y_n_all$counts + 1)
+
+#subset
+selY_n_all <- dge_n_all[rownames(result_n_all$table)[result_n_all$table$FDR<0.05 & 
+                                                         result_n_all$table$logFC < -2 |
+                                                         result_n_all$table$FDR<0.05 & 
+                                                         result_n_all$table$logFC > 2],]
+
+
+#make heatmap
+cimColour <- rev(viridis(1000))
+
+par(mar= c(20, 15, 15, 40))
+cim(selY_n_all, 
+    color = cimColour,
+    symkey=FALSE,
+    mar=c(10,20),
+    col.cex = 0.8,
+    #row.sideColors = cimColourRows,
+    row.names = TRUE,
+    #row.cex = 0.8,
+    #keysize = c(0.1, 0.1)
+    #save = "tiff",
+    #name.save = "./analysis/heatmap/heatmap_matched_unmatched.tiff"
+)
+dev.off()
+
+#positive fold change means higher at 60 min than 0 min
+
+ves.df <- 
+
+
+
+
 
 #11. Peak list filtering and formatting----
 #get peak list
@@ -361,17 +954,14 @@ peaks <- rbind.fill(peaks_noiso,
 #import prediction table
 #see https://github.com/margotbligh/sugarMassesPredict
 #created with: sugarMassesPredict.py -dp 1 7 -p 0 -m sulphate unsaturated -i neg -s 175 1400
-mz_predicted <- fread("predicted-masses-dp1to7-sulphatedhexose-unsaturated.txt")
-
-mz_predicted <- fread("predicted-masses-dp1to7-sulphatedhexose-unsaturated-carboxyl-multimod.txt")
-
+mz_predicted <- fread("neutral-predicted-sugars_dp1to10_alditol_unsaturated_pentose.txt")
 
 #remove "extra" columns
 extraCol <- c('mass',
               'formula')
 
 mz_predicted <- mz_predicted %>% 
-    select(-all_of(extraCol))
+    dplyr::select(-all_of(extraCol))
 
 #make long format
 predicted <- mz_predicted %>% 
@@ -379,8 +969,6 @@ predicted <- mz_predicted %>%
            value = "mz",
            -name,
            -dp)
-
-predicted <- predicted[grep("unsaturated-[234567]" , predicted$name, invert = TRUE),]
 
 #make data.table
 setDT(predicted)
