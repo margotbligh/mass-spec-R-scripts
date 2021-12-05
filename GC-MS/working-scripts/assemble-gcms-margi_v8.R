@@ -1149,6 +1149,8 @@ source('http://www.sthda.com/sthda/RDoc/functions/addgrids3d.r')
 
 png("plots/gmeeting/mannitol_3d.png", height = 6, width = 7, units = "in",
     res = 600)
+png("plots/gmeeting/mannitol_3d.png", height = 6, width = 7, units = "in",
+    res = 600)
 scatterplot3d(x = mannitol_3d_plot.df$xposition, y = mannitol_3d_plot.df$mz, 
               z =  sqrt(mannitol_3d_plot.df$intensity), type = "h",
               pch = "", grid = F, color = colors_3dplot, box = F, xlab = "",
@@ -1158,5 +1160,224 @@ scatterplot3d(x = mannitol_3d_plot.df$xposition, y = mannitol_3d_plot.df$mz,
 # addgrids3d(x = mannitol_3d_plot.df$xposition, y = mannitol_3d_plot.df$mz, 
 #            z =  mannitol_3d_plot.df$intensity, grid = c("xy", "xz", "yz"))
 dev.off()
+
+
+
+#23: FIGURE FOR PAPER #1-------
+# Fuc_O2 <- ggplot(data = Fucus)+
+#   geom_boxplot(aes(x = Treatment, y = O2, fill=Treatment), position = position_dodge(width = 1),
+#                color="#262626")+
+#   geom_point(aes(x=Treatment, y=O2, group=Treatment, fill=Treatment),
+#              pch=21, position = position_jitterdodge(jitter.width = .5, dodge.width = 1), size=1.5)+
+#   # annotate("text", x=0.5, y=max(Fucus$O2), label = "italic(Fucus~vesiculosus)", parse=T, vjust = 1, hjust = 0,size=3)+
+#   scale_fill_manual(name="", labels=c("initial", "dark", "light"),
+#                     values = time_cat_colors)+
+#   scale_y_continuous(name=expression('O'[2]~(mu*'mol'~L^-1)))+
+#   scale_x_discrete(name="")+
+#   theme_bw()+  
+#   theme(text=element_text(size=font_size, family = font_family, colour = "#262626"), 
+#         strip.text.x = element_text(size=font_size, family = font_family, color = "white"),
+#         legend.text = element_text(size=font_size, family = font_family),
+#         axis.text = element_text(size=font_size, family=font_family, colour = "#262626"),
+#         panel.grid = element_blank(),
+#         legend.position = "none",
+#         strip.background.y = element_rect(fill = "#ECECEC"),
+#         axis.text.x = element_blank(),
+#         axis.ticks.x = element_blank())+
+#   labs(title = expression(O[2]))
+
+compound_names <- list(`3`="Small organic acid-like","13"="Mannitol","19"="Carbamate-like",
+                       "20"="Small aromatic-like", "44"="Small aromatic-like", 
+                       "117"="Small organic acid-like","136"="Alcohol-like")
+compound_names <- unlist(compound_names)
+
+p <- ggplot(data = pspectra.r.alg.sig)+
+  geom_boxplot(aes(x = SampleGroup, y = rel_intensity, fill=SampleGroup), 
+               position = position_dodge(width = 1), color="#262626",
+               lwd = 1.5)+
+  geom_point(aes(x=SampleGroup, y=rel_intensity, group=SampleGroup, fill=SampleGroup),
+             pch=21, size=1, stroke = 1.5)+
+  scale_fill_manual(values = time_cat_5colors, name = "",
+                    labels = c("buffer blank", "before incubation",
+                               "dark incubation", "light incubation")) +
+  scale_y_continuous(name="Relative ribitol-normalized intensity (a.u.)") +
+  scale_x_discrete(name="")+
+  facet_wrap(~ps_nr, scales = "free_y", nrow = 1,
+             labeller = as_labeller(compound_names)) +
+  add_pvalue(wilcox.df.sig, xmin = "xmin", xmax = "xmax", 
+             y.position = wilcox.df.sig$y.position,
+             label = "p.adj.signif",
+             bracket.colour = "#262626", bracket.size = 1.5,
+             label.size = 5, fontfamily = font_family) +
+  theme_bw()+
+  theme(text=element_text(size=6.1, family = font_family, colour = "#262626"),
+        strip.text.x = element_text(size=6.1, family = font_family, color = "#262626",
+                                    hjust = 0),
+        legend.text = element_text(size=6.1, family = font_family),
+        axis.text = element_text(size=6.1, family=font_family, colour = "#262626"),
+        panel.grid = element_blank(), panel.border = element_blank(),
+        axis.line.x = element_blank(), 
+        axis.line.y = element_line(colour = "#262626", size =1.5), 
+        axis.ticks.y = element_line(colour = "#262626", size =1.5),
+        legend.position = "none",
+        strip.background = element_rect(fill = "white", colour = "white"),
+        axis.text.x = element_blank(), axis.ticks.x = element_blank())
+
+
+pdf(file = "figs/gc-ms_v1.pdf", width = 8.1141732, height = 2.106299)
+p
+dev.off()
+
+  
+
+p <- ggplot(data = pspectra.r.alg.sig)+
+  geom_boxplot(aes(x = SampleGroup, y = rel_intensity, fill=SampleGroup), 
+               position = position_dodge(width = 1), color="#262626",
+               lwd = 0.7)+
+  geom_point(aes(x=SampleGroup, y=rel_intensity, group=SampleGroup, fill=SampleGroup),
+             pch=21, size=1, stroke = 0.7)+
+  scale_fill_manual(values = time_cat_5colors, name = "",
+                    labels = c("buffer blank", "before incubation",
+                               "dark incubation", "light incubation")) +
+  scale_y_continuous(name="Relative ribitol-normalized intensity (a.u.)") +
+  scale_x_discrete(name="")+
+  facet_wrap(~ps_nr, scales = "free_y", nrow = 1,
+             labeller = as_labeller(compound_names)) +
+  add_pvalue(wilcox.df.sig, xmin = "xmin", xmax = "xmax", 
+             y.position = wilcox.df.sig$y.position,
+             label = "p.adj.signif",
+             bracket.colour = "#262626", bracket.size = 0.7,
+             label.size = 8, fontfamily = font_family) +
+  theme_bw()+
+  theme(text=element_text(size=8, family = font_family, colour = "#262626"),
+        strip.text.x = element_text(size=8, family = font_family, color = "#262626",
+                                    hjust = 0),
+        legend.text = element_text(size=8, family = font_family),
+        axis.text = element_text(size=8, family=font_family, colour = "#262626"),
+        panel.grid = element_blank(), panel.border = element_blank(),
+        axis.line.x = element_blank(), 
+        axis.line.y = element_line(colour = "#262626", size =0.7), 
+        axis.ticks.y = element_line(colour = "#262626", size =0.7),
+        legend.position = "top",
+        strip.background = element_rect(fill = "white", colour = "white"),
+        axis.text.x = element_blank(), axis.ticks.x = element_blank())
+
+
+png(file = "figs/gc-ms_v2.png", width = 10, height = 3, units = "in",
+    res = 300)
+p
+dev.off()
+
+#24: FIGURE FOR PAPER #2----
+pspectra.sig <- pspectra.r.alg.met %>% filter(ps_nr %in% pspectra.r.alg.sig$ps_nr)
+pspectra.sig$SampleGroup <- factor(pspectra.sig$SampleGroup,
+                                   levels = c("blank",  "standard",
+                                              "algae seawater", 
+                                              "algae dark", "algae light"))
+
+
+pspectra.sig.sum <- pspectra.sig %>% 
+  dplyr::group_by(ps_nr, ref_sample, SampleGroup) %>% 
+  dplyr::summarise(mean_rel_intensity = mean(rel_intensity))
+
+time_cat_5colors<-c("white", "#FEC00099",
+                    scico(1, palette = "cork",begin=0.6,end=0.7, alpha=0.7),
+                    scico(2, palette = "vikO",begin=0.25,end=0.75, alpha=0.7))
+show_col(time_cat_5colors)
+
+ggplot(data = pspectra.sig[pspectra.sig$ps_nr == 13,])+
+  geom_boxplot(aes(x = SampleGroup, y = rel_intensity, fill=SampleGroup), 
+               position = position_dodge(width = 1), color="#262626",
+               lwd = 0.7)+
+  geom_point(aes(x=SampleGroup, y=rel_intensity, group=SampleGroup, fill=SampleGroup),
+             pch=21, size=1, stroke = 0.7)+
+  scale_fill_manual(values = time_cat_5colors, name = "",
+                    labels = c("buffer blank", "standard", "before incubation",
+                               "dark incubation", "light incubation")) +
+  scale_y_continuous(name="Relative ribitol-normalized intensity (a.u.)") +
+  scale_x_discrete(name="")+
+  facet_wrap(~ps_nr, scales = "free_y", nrow = 1,
+             labeller = as_labeller(compound_names)) +
+  add_pvalue(wilcox.df.sig[wilcox.df.sig$ps_nr == 13,], xmin = "xmin", xmax = "xmax", 
+             y.position = wilcox.df.sig$y.position[wilcox.df.sig$ps_nr == 13],
+             label = "p.adj.signif",
+             bracket.colour = "#262626", bracket.size = 0.7,
+             label.size = 8, fontfamily = font_family) +
+  theme_bw()+
+  theme(text=element_text(size=8, family = font_family, colour = "#262626"),
+        strip.text.x = element_text(size=8, family = font_family, color = "#262626",
+                                    hjust = 0),
+        legend.text = element_text(size=8, family = font_family),
+        axis.text = element_text(size=8, family=font_family, colour = "#262626"),
+        panel.grid = element_blank(), panel.border = element_blank(),
+        axis.line.x = element_blank(), 
+        axis.line.y = element_line(colour = "#262626", size =0.7), 
+        axis.ticks.y = element_line(colour = "#262626", size =0.7),
+        legend.position = "top",
+        strip.background = element_rect(fill = "white", colour = "white"),
+        axis.text.x = element_blank(), axis.ticks.x = element_blank())
+
+mannitol_3d_plot.df2 <- dplyr::bind_rows(lapply(spclist.by.sample.alg, "[[", 13), 
+                                        .id = "sample_nr") 
+xpositions <- c(5.4, 2.8, 5.6, 3, 5.8, 3.2, 4.4, 3.4, 4.6, 3.6, 4.8, 3.8,
+                0.8,1,1.2, 1.8, 2, 2.2)
+mannitol_3d_plot.df$xposition <- NA
+#x = intensity
+#y = sample
+#z = mz
+
+#blank = 13, 14, 15 <- 0.8,1,1.2
+#standard = 16, 17, 18 <- 1.8, 2, 2.2
+#seawater = 2,4,6,8,10,12 <- 2.8,3,3.2,3.4,3.6,3.8
+#dark = 7,9,11 <- 4.4,4.6,4.8
+#light=1,3,5 <- 5.4, 5.6, 5.8
+
+for (i in 1:18){
+  mannitol_3d_plot.df$xposition[mannitol_3d_plot.df$sample_nr == i] <- xpositions[i]
+}
+
+scatterplot3d(x = mannitol_3d_plot.df$xposition, y = mannitol_3d_plot.df$mz, 
+              z =  mannitol_3d_plot.df$intensity, type = "h",
+              pch = "", grid = F, angle=50)
+
+mannitol_3d_plot.df$sample_group <- pd$SampleGroup[match(mannitol_3d_plot.df$sample_nr, pd$sample_nr)]
+mannitol_3d_plot.df$sample_group <- sub("algae\\s", "", mannitol_3d_plot.df$sample_group)
+mannitol_3d_plot.df$sample_group <- factor(mannitol_3d_plot.df$sample_group,
+                                           levels = c("blank", "standard", "seawater",
+                                                      "dark", "light"))
+colors_3dplot <- c("grey", "black", time_cat_5colors[2:4])
+colors_3dplot <- colors_3dplot[as.numeric(mannitol_3d_plot.df$sample_group)]
+
+
+source('http://www.sthda.com/sthda/RDoc/functions/addgrids3d.r')
+
+par(family = "Helvetica")
+
+png("plots/gmeeting/mannitol_3d.png", height = 6, width = 7, units = "in",
+    res = 600)
+svg("figs/mannitol_3d_v1.svg", height = 6, width = 7)
+scatterplot3d(x = mannitol_3d_plot.df$xposition, y = mannitol_3d_plot.df$mz, 
+              z =  sqrt(mannitol_3d_plot.df$norm_intensity), type = "h",
+              pch = "", grid = F, color = colors_3dplot, box = F, xlab = "",
+              zlab = expression(sqrt(Ribitol-normalized~untensity~(a.u.))), 
+              ylab = expression(italic(m/z)), xlim = c(0, 6.6), ylim = c(0,600),
+              x.ticklabs = c("", "blank", "standard", "before incubation", "", 
+                             "dark incubation",
+                             "light incubation"), lwd = 1)
+dev.off()
+
+
+mannitol_plot.df <- dplyr::bind_rows(lapply(spclist.by.sample.alg, "[[", 13), 
+                                     .id = "sample_nr") 
+mannitol_plot.df$sample_group <- pd$SampleGroup[match(mannitol_plot.df$sample_nr, 
+                                                      pd$sample_nr)]
+mannitol_plot.df$sample_group <- sub("algae\\s", "", mannitol_plot.df$sample_group)
+mannitol_plot.df$sample_group <- factor(mannitol_plot.df$sample_group,
+                                           levels = c("blank", "standard", "seawater",
+                                                      "dark", "light"))
+mannitol_plot.df$norm_intensity[is.na(mannitol_plot.df$norm_intensity)] <- 0
+mannitol_plot.df <- mannitol_plot.df[order(mannitol_plot.df$mz),]
+
+
 
 
