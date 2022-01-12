@@ -1191,7 +1191,7 @@ compound_names <- list(`3`="Small organic acid-like","13"="Mannitol","19"="Carba
                        "117"="Small organic acid-like","136"="Alcohol-like")
 compound_names <- unlist(compound_names)
 
-p <- ggplot(data = pspectra.r.alg.sig)+
+ggplot(data = pspectra.r.alg.sig)+
   geom_boxplot(aes(x = SampleGroup, y = rel_intensity, fill=SampleGroup), 
                position = position_dodge(width = 1), color="#262626",
                lwd = 1.5)+
@@ -1766,4 +1766,103 @@ dev.off()
 
 pdf(file = "figs/gc-ms_seagrass_v1.pdf", width = 8.1141732/3, height = 2.106299)
 p
+dev.off()
+
+#PLOT SAME PSEUDOSPEC FOR ALGAE AND SEAGRASS-----
+compound_names.all <- c(compound_names, compound_names.sg)
+
+#algae
+pspectra.r.alg.sig2 <- pspectra.r.alg.met %>% 
+  filter(ps_nr %in% pspectra.r.sg.sig$ps_nr) %>% 
+  filter(!ps_nr %in% pspectra.r.alg.sig$ps_nr) %>% 
+  filter(SampleGroup != "standard")
+pspectra.r.alg.sig2 <- rbind(pspectra.r.alg.sig2, pspectra.r.alg.sig)
+pspectra.r.alg.sig2$SampleGroup <- factor(pspectra.r.alg.sig2$SampleGroup,
+                                         levels = c("blank",  "algae seawater", 
+                                                    "algae dark", "algae light"))
+
+p1 <- ggplot(data = pspectra.r.alg.sig2)+
+  geom_boxplot(aes(x = SampleGroup, y = rel_intensity, fill=SampleGroup), 
+               position = position_dodge(width = 1), color="#262626",
+               lwd = 0.7)+
+  geom_point(aes(x=SampleGroup, y=rel_intensity, group=SampleGroup, fill=SampleGroup),
+             pch=21, size=1, stroke = 0.7)+
+  scale_fill_manual(values = time_cat_5colors, name = "",
+                    labels = c("buffer blank", "before incubation",
+                               "dark incubation", "light incubation")) +
+  scale_y_continuous(name="Relative ribitol-normalized intensity (a.u.)") +
+  scale_x_discrete(name="")+
+  facet_wrap(~ps_nr, scales = "free_y", nrow = 1,
+             labeller = as_labeller(compound_names.all)) +
+  add_pvalue(wilcox.df.sig, xmin = "xmin", xmax = "xmax", 
+             y.position = wilcox.df.sig$y.position,
+             label = "p.adj.signif",
+             bracket.colour = "#262626", bracket.size = 0.7,
+             label.size = 8, fontfamily = font_family) +
+  theme_bw()+
+  theme(text=element_text(size=8, family = font_family, colour = "#262626"),
+        strip.text.x = element_text(size=8, family = font_family, color = "#262626",
+                                    hjust = 0),
+        legend.text = element_text(size=8, family = font_family),
+        axis.text = element_text(size=8, family=font_family, colour = "#262626"),
+        panel.grid = element_blank(), panel.border = element_blank(),
+        axis.line.x = element_blank(), 
+        axis.line.y = element_line(colour = "#262626", size =0.7), 
+        axis.ticks.y = element_line(colour = "#262626", size =0.7),
+        legend.position = "top",
+        strip.background = element_rect(fill = "white", colour = "white"),
+        axis.text.x = element_blank(), axis.ticks.x = element_blank())
+
+
+png(file = "figs/gc-ms_algae_20220112.png", width = 10, height = 3, units = "in",
+    res = 300)
+p1
+dev.off()
+
+#seagrass
+pspectra.r.sg.sig2 <- pspectra.r.sg.met %>% 
+  filter(ps_nr %in% pspectra.r.alg.sig$ps_nr) %>% 
+  filter(!ps_nr %in% pspectra.r.sg.sig$ps_nr) %>% 
+  filter(SampleGroup != "standard")
+pspectra.r.sg.sig2 <- rbind(pspectra.r.sg.sig2, pspectra.r.sg.sig)
+pspectra.r.sg.sig2$SampleGroup <- factor(pspectra.r.sg.sig2$SampleGroup,
+                                          levels = c("blank",  "seagrass seawater", 
+                                                     "seagrass dark", "seagrass light"))
+
+p2 <- ggplot(data = pspectra.r.sg.sig2)+
+  geom_boxplot(aes(x = SampleGroup, y = rel_intensity, fill=SampleGroup), 
+               position = position_dodge(width = 1), color="#262626",
+               lwd = 0.7)+
+  geom_point(aes(x=SampleGroup, y=rel_intensity, group=SampleGroup, fill=SampleGroup),
+             pch=21, size=1, stroke = 0.7)+
+  scale_fill_manual(values = time_cat_5colors, name = "",
+                    labels = c("buffer blank", "before incubation",
+                               "dark incubation", "light incubation")) +
+  scale_y_continuous(name="Relative ribitol-normalized intensity (a.u.)") +
+  scale_x_discrete(name="")+
+  facet_wrap(~ps_nr, scales = "free_y", nrow = 1,
+             labeller = as_labeller(compound_names.all)) +
+  add_pvalue(wilcox.df.sg.sig, xmin = "xmin", xmax = "xmax", 
+             y.position = wilcox.df.sg.sig$y.position,
+             label = "p.adj.signif",
+             bracket.colour = "#262626", bracket.size = 0.7,
+             label.size = 8, fontfamily = font_family) +
+  theme_bw()+
+  theme(text=element_text(size=8, family = font_family, colour = "#262626"),
+        strip.text.x = element_text(size=8, family = font_family, color = "#262626",
+                                    hjust = 0),
+        legend.text = element_text(size=8, family = font_family),
+        axis.text = element_text(size=8, family=font_family, colour = "#262626"),
+        panel.grid = element_blank(), panel.border = element_blank(),
+        axis.line.x = element_blank(), 
+        axis.line.y = element_line(colour = "#262626", size =0.7), 
+        axis.ticks.y = element_line(colour = "#262626", size =0.7),
+        legend.position = "none",
+        strip.background = element_rect(fill = "white", colour = "white"),
+        axis.text.x = element_blank(), axis.ticks.x = element_blank())
+
+
+png(file = "figs/gc-ms_seagrass_20220112.png", width = 10, height = 3, units = "in",
+    res = 300)
+p2
 dev.off()
