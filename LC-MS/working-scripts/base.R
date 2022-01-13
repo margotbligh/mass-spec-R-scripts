@@ -358,37 +358,67 @@ peaks <- rbind.fill(peaks_noiso,
                     peaks_iso)
 
 #13: Annotate features based on predictions----
-#import prediction table
-#see https://github.com/margotbligh/sugarMassesPredict
-#created with: sugarMassesPredict.py -dp 1 7 -p 0 -m sulphate unsaturated -i neg -s 175 1400
-mz_predicted <- fread("predicted-masses-dp1to7-sulphatedhexose-unsaturated.txt")
-
-mz_predicted <- fread("predicted-masses-dp1to7-sulphatedhexose-unsaturated-carboxyl-multimod.txt")
-
+predictSugars <- function(dp1,dp2,ESI_mode, scan_range1, scan_range2,
+                          pent_option=NULL,modifications=NULL,
+                          nmod_max=NULL,double_sulphate=NULL,label=NULL){
+    py_install("pandas", "numpy")
+    source_python("../../sugarMassesPredict-r.py")
+    dp1 = as.integer(dp1)
+    dp2 = as.integer(dp2)
+    scan_range1 = as.integer(scan_range1)
+    scan_range2 = as.integer(scan_range2)
+    if(!is.null(pent_option)){
+        pent_option = as.integer(pent_option)
+    } else{
+        pent_option = as.integer(0)
+    }
+    if(!is.null(nmod_max)){
+        nmod_max = as.integer(nmod_max)
+    } else{
+        nmod_max = as.integer(1)
+    }
+    if(!is.null(double_sulphate)){
+        double_sulphate = as.integer(double_sulphate)
+    } else{
+        double_sulphate = as.integer(0)
+    }
+    if(!is.null(modifications)){
+        if(is.vector(modifications)){
+            modifications = as.list(modifications)
+        }
+    } else{
+        modifications = "none"
+    }
+    if(is.null(label)){
+        label = "none"
+    }
+    df <- predict_sugars(dp1 = dp1, dp2 = dp2, ESI_mode = ESI_mode,
+                         scan_range1 = scan_range1, scan_range2 = scan_range2,
+                         pent_option = pent_option, modifications = modifications,
+                         label = label, nmod_max = nmod_max, 
+                         double_sulphate = double_sulphate)
+    return(df)
+}
+mz_predicted <- predictSugars(dp1 = 1, dp2 = 8, ESI_mode = 'neg', scan_range1 = 175, 
+                              scan_range2 = 1400, pent_option = 1, 
+                              modifications = c("sulphate", "deoxy", "carboxyl"),
+                              nmod_max = 2, double_sulphate = 1)
 
 #remove "extra" columns
-extraCol <- c('mass',
-              'formula')
+extraCol <- c('mass','formula')
 
-mz_predicted <- mz_predicted %>% 
-    select(-all_of(extraCol))
+mz_predicted <- mz_predicted %>% select(-all_of(extraCol))
 
 #make long format
 predicted <- mz_predicted %>% 
-    gather(key = "ion",
-           value = "mz",
-           -name,
-           -dp)
-
-predicted <- predicted[grep("unsaturated-[234567]" , predicted$name, invert = TRUE),]
+    gather(key = "ion", value = "mz", -name, -dp)
 
 #make data.table
-setDT(predicted)
-setDT(peaks)
+setDT(predicted); setDT(peaks)
 #create interval to overlap with (same width as for peak grouping)
 predicted$mz <- as.numeric(predicted$mz)
-predicted$mzmin <- predicted$mz-0.005
-predicted$mzmax <- predicted$mz+0.005
+predicted$mzmin <- predicted$mz-0.001
+predicted$mzmax <- predicted$mz+0.001
 
 #remove NA rows
 predicted <- na.omit(predicted)
@@ -396,8 +426,7 @@ predicted <- na.omit(predicted)
 #match using foverlaps from data.table (very fast)
 setkey(predicted, mzmin, mzmax)
 peaks_nopred <- peaks
-peaks <- foverlaps(peaks,
-                   predicted)
+peaks <- foverlaps(peaks,predicted)
 
 #change NA values created during matching (features with no match) to be blank
 #remove extra columns
@@ -405,30 +434,51 @@ peaks$mzmin <- NULL
 peaks$mzmax <- NULL
 
 peaks <- peaks %>% 
-    replace_na(list("name"="",
-                    "ion"= "", 
-                    "mz" = "",
-                    "dp" = ""))
+    replace_na(list("name"="", "ion"= "", "mz" = "","dp" = ""))
 #only keep matched features
 peaks_matched <- peaks[!peaks$name=="",]
+
+#remove annotations with sulphate or carboxyl and M+Cl or M+CHOO
+a <- grep("sulphate|carboxyl", peaks_matched$name)
+b <- grep("Cl|CHOO", peaks_matched$ion)
+c <- intersect(a, b)
+peaks_matched <- peaks_matched[-c,]
 
 #order by retention time
 peaks_matched <- peaks_matched[order(rt_min),]
 
+#remove everything before 1 min and after 22 min
+peaks_matched <- peaks_matched %>% filter(between(rt_min, 1, 22))
+
 #make id and ion column
-peaks_matched$id_ion <- paste0(peaks_matched$name, 
-                               ": ",
-                               peaks_matched$ion)
+peaks_matched$id_ion_individual <- paste0(peaks_matched$name, ": ", peaks_matched$ion)
+
+#aggregate so that if there are multiple predictions for one feature
+#they are shown in the same row. delete all of the other extra columns added 
+#during matching
+names <- setdiff(names(peaks_matched), names(predicted))
+names <- names[!names == "id_ion_individual"]
+setDF(peaks_matched)
+peaks_matched_uncollapsed <- peaks_matched
+peaks_matched <- peaks_matched_uncollapsed %>% 
+    dplyr::group_by(across(all_of(names))) %>% 
+    dplyr::mutate(id_ion = paste0(id_ion_individual, collapse = ", ")) %>% 
+    ungroup() %>% 
+    distinct(across(all_of(c(names, "id_ion"))))
+names(peaks_matched)[names(peaks_matched) == 'i.mz'] <- 'mz'
+names(peaks_matched)[names(peaks_matched) == 'i.mzmin'] <- 'mzmin'
+names(peaks_matched)[names(peaks_matched) == 'i.mzmax'] <- 'mzmax'
 
 
-#write to table
-fwrite(peaks_matched,
-       "./analysis/analysis_tables/matched-peaks-v1.txt",
-       sep = "\t")
 
-fwrite(peaks,
-       "./analysis/analysis_tables/peaks-v1.txt",
-       sep = "\t")
+peaks_matched_old <- peaks_matched
+
+colOrder <- names(peaks_matched)
+colOrder <- colOrder[1:length(colOrder)-1]
+colOrder <- c("id_ion", colOrder)
+
+setDF(peaks_matched)
+peaks_matched <- peaks_matched[,colOrder]
 
 #14: Extract and format eic to check peaks of identified sugars -----
 #get vectors
