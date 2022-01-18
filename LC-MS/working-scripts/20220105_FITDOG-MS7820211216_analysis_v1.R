@@ -561,9 +561,13 @@ par(mfrow=c(1,1))
 
     #F. vesiculosus fucoidan-----
 
-ves <- filter(peaks_matched, F..vesiculosus >= 2)
+ves <- peaks_matched %>% 
+    filter(F..vesiculosus >= 1 & if_all(starts_with("ves"), ~ . >= 1e6) |
+               F..vesiculosus >= 2) 
 ves.mz <- round(ves$mz, 3)
 names(ves.mz) <- ves$id_ion
+
+
 
 ves.mz.unique <- unique(ves.mz)
 names(ves.mz.unique) <- names(ves.mz)[match(ves.mz.unique, ves.mz)]
@@ -658,6 +662,9 @@ ves_chr.df2$ion2[ves_chr.df2$mz == 210.991] <- "dehydrated pentose monosulphate:
 ves_chr.df2$ion2[ves_chr.df2$mz == 535.134] <- "tri-deoxyhexose monosulphate: [M-H]-"
 ves_chr.df2$ion2[ves_chr.df2$mz == 322.974] <- "unknown, m/z = 322.974 (sulphated)"
 ves_chr.df2$ion2[ves_chr.df2$mz == 345.095] <- "di-deoxyhexose: [M+Cl]-"
+ves_chr.df2$ion2[ves_chr.df2$mz == 234.012] <- "di-deoxyhexose disulphate: [M-2H]-2"
+
+pal_3 <- c("#FEC000", "#2BB6AF", "#D1D1FE")
 
 p <- ggplot(data = ves_chr.df2 %>% filter(source == "F. vesiculosus")) +
     geom_line(aes(x = rt, y = intensity, group = plot.group,
@@ -678,7 +685,6 @@ print(p)
 dev.off()
 
 #plot for all samples
-pal_3 <- c("#FEC000", "#2BB6AF", "#D1D1FE")
 ves_chr.df2$source <- factor(ves_chr.df2$source, 
                              levels = c("E. bicyclis","L. digitata",
                                         "F. vesiculosus", "L. hyperborea",
@@ -712,7 +718,10 @@ rm(ves_chr)
 
     #L. hyperborea fucoidan-----
 
-hyp <- filter(peaks_matched, L..hyperborea >= 2)
+hyp <- peaks_matched %>% 
+    filter(L..hyperborea >= 1 & if_all(starts_with("hyp"), ~ . >= 1e6) |
+               L..hyperborea >= 2) 
+
 hyp.mz <- round(hyp$mz, 3)
 names(hyp.mz) <- hyp$id_ion
 
@@ -791,7 +800,7 @@ dev.off()
 
 mz_nope <- c(245.022, 311.005, #assume same compound as 300.976
              451.022, #assume same compound as 473.004
-             601.639 #not really peaks
+             601.639, 302.9657 #not really peaks
 )
 
 hyp_chr.df2 <- hyp_chr.df %>% filter(!mz %in% mz_nope) 
@@ -863,8 +872,10 @@ dev.off()
 rm(hyp_chr)
 
     #L. digitata laminarin-----
+dig <- peaks_matched %>% 
+    filter(L..digitata >= 1 & if_all(starts_with("dig"), ~ . >= 1e6) |
+               L..digitata >= 2) 
 
-dig <- filter(peaks_matched, L..digitata >= 2)
 dig.mz <- round(dig$mz, 3)
 names(dig.mz) <- dig$id_ion
 
@@ -878,6 +889,9 @@ for(i in 1:length(dig.mz.unique)){
     dig_chr[[i]] <- chromatogram(res, mz = c(dig.mz.unique[i]-0.001, 
                                              dig.mz.unique[i]+0.001))
 }
+
+save(dig_chr, file = "analysis/RData/dig_chr.RData")
+
 
 dig_chr.df <- data.frame(sample = as.character(),
                          substrate = as.character(),
@@ -942,6 +956,8 @@ mz_nope <- c(245.022, 311.005, #assume same compound as 300.976
              451.022, #assume same compound as 473.004
              601.639 #not really peaks
 )
+
+dig_chr.df$ion[dig_chr.df$mz == 351.946] %>% unique()
 
 hyp_chr.df2 <- hyp_chr.df %>% filter(!mz %in% mz_nope) 
 
