@@ -121,6 +121,70 @@ save(data_peaks, file = "./analysis/RData/data_peaks.RData")
 save(data_ms2, file = "./analysis/RData/data_ms2.RData")
 
 
+#6: Group peaks to create "features"---------
+#parameters
+pdp <- PeakDensityParam(sampleGroups = data$source,
+                        binSize = 0.005, bw = 6, minFraction = 1/3) 
+
+#group peaks
+data_peaks_grouped <- groupChromPeaks(data_peaks, param = pdp)
+
+save(data_peaks_grouped, file = "./analysis/RData/data_peaks_grouped.RData")
+
+#7: Fill in missing peaks----------
+fpp <- FillChromPeaksParam()
+data_peaks_grouped_filled <- fillChromPeaks(data_peaks_grouped)
+
+save(data_peaks_grouped_filled, file = "./analysis/RData/data_peaks_grouped_filled.RData")
+
+res <- data_peaks_grouped_filled
+
+#8: Remove large data files from environment----------
+rm(data, data_peaks, data_peaks_grouped, data_peaks_grouped_filled)    
+
+#9: Save diffreport of xdata -----
+xset <- as(res, "xcmsSet")
+sampnames(xset) <- pData(res)$name
+sampclass(xset) <- pData(res)$source
+
+#10. Isotope picking----
+##create xsannotate object
+an <- xsAnnotate(xset)
+##Group peaks of a xsAnnotate object according to their retention time 
+an <- groupFWHM(an, perfwhm = 0.6)
+##Annotate isotope peaks
+an <- findIsotopes(an, mzabs=0.01)
+##Peak grouping after correlation information into pseudospectrum groups 
+an <- groupCorr(an, cor_eic_th=0.75)
+##Find adducts
+an <- findAdducts(an, polarity="negative")
+
+#11. Peak list filtering and formatting----
+#get peak list
+pl <-getPeaklist(an)
+
+#filter by blank exclusion (detected peaks)
+pl_be <-pl[pl$solvent.blank==0,]
+
+#add rounded retention time as first colum
+pl_be <- cbind(rt_min = round(pl_be$rt/60, 1), pl_be)
+
+#filter by retention time
+pl_be_rt <- pl_be %>% filter(between(rt_min, 1, 22))
+
+#make rownames from rt and mz of features
+rownames(pl_be_rt)<-paste(round(pl_be_rt$rt,1), round(pl_be_rt$mz,3), sep="_")
+
+#change NA to 0
+pl_be_rt[is.na(pl_be_rt)] <- 0
+
+#change name
+peaks <- pl_be_rt
+
+save.image("./analysis/RData/RData_20220126.RData")
+
+
+
 
 
 
