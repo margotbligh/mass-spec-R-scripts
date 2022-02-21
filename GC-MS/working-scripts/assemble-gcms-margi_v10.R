@@ -1,4 +1,4 @@
-setwd("/Users/margotbligh/ownCloud/ASSEMBLE-margi")
+setwd("/Users/mbligh/ownCloud/ASSEMBLE-margi")
 
 load("RData_20220129.RData")
 #1: Libraries
@@ -1403,3 +1403,64 @@ png(file = "figs/gc-ms_seagrass_20220208.png", width = 10, height = 3, units = "
     res = 300)
 p2
 dev.off()
+
+#MANNITOL SUPPLEMENTARY FIGURE------
+source('http://www.sthda.com/sthda/RDoc/functions/addgrids3d.r')
+
+#extract data for mannitol
+mannitol_3d_plot.df <- dplyr::bind_rows(lapply(spclist.by.sample.alg, "[[", 13), 
+                                        .id = "sample_nr") 
+#set x positions
+xpositions <- c(5.4, 2.8, 5.6, 3, 5.8, 3.2, 4.4, 3.4, 4.6, 3.6, 4.8, 3.8,
+                0.8,1,1.2, 1.8, 2, 2.2)
+mannitol_3d_plot.df$xposition <- NA
+#x = intensity
+#y = sample
+#z = mz
+
+#blank = 13, 14, 15 <- 0.8,1,1.2
+#standard = 16, 17, 18 <- 1.8, 2, 2.2
+#seawater = 2,4,6,8,10,12 <- 2.8,3,3.2,3.4,3.6,3.8
+#dark = 7,9,11 <- 4.4,4.6,4.8
+#light=1,3,5 <- 5.4, 5.6, 5.8
+
+for (i in 1:18){
+  mannitol_3d_plot.df$xposition[mannitol_3d_plot.df$sample_nr == i] <- xpositions[i]
+}
+
+#make colour palette matching sample group
+mannitol_3d_plot.df$sample_group <- pd$SampleGroup[
+  match(mannitol_3d_plot.df$sample_nr, pd$sample_nr)]
+mannitol_3d_plot.df$sample_group <- sub("algae\\s", "", mannitol_3d_plot.df$sample_group)
+mannitol_3d_plot.df$sample_group <- factor(mannitol_3d_plot.df$sample_group,
+                                           levels = c("blank", "standard", "seawater",
+                                                      "dark", "light"))
+mannitol_cols <- c("grey", "black",
+                   scico(1, palette = "cork",begin=0.6,end=0.7, alpha=0.7),
+                   scico(2, palette = "vikO",begin=0.25,end=0.75, alpha=0.7))
+colours_3dplot <- mannitol_cols[as.numeric(mannitol_3d_plot.df$sample_group)]
+
+#set font
+par(family = "Helvetica")
+
+#plot
+svg("figs/mannitol_3d_20220220.svg", height = 6, width = 10)
+scatterplot3d(x = mannitol_3d_plot.df$xposition, y = mannitol_3d_plot.df$mz, 
+              z =  sqrt(mannitol_3d_plot.df$norm_intensity), type = "h",
+              pch = "", grid = F, color = colours_3dplot, box = F, xlab = "",
+              zlab = expression(sqrt(Ribitol-normalized~untensity~(a.u.))), 
+              ylab = expression(italic(m/z)), xlim = c(0, 6.6), ylim = c(0,600),
+              x.ticklabs = c("", "blank", "standard", "before incubation", "", 
+                             "dark incubation",
+                             "light incubation"), lwd = 1)
+dev.off()
+
+
+
+
+
+
+
+
+
+
