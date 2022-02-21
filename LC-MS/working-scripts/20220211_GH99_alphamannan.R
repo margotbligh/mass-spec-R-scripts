@@ -1,5 +1,17 @@
-setwd("/Users/margotbligh/ownCloud/marglyco/Data/LC-MS_data/alpha-mannan")
+#setwd("/Users/margotbligh/ownCloud/marglyco/Data/LC-MS_data/alpha-mannan")
+setwd("/Users/mbligh/ownCloud/marglyco/Data/LC-MS_data/alpha-mannan")
+
 load("20220211_RData.RData")
+
+#change directory names for new Macbook
+x <- dirname(data.di.ms2) 
+x <- x %>% sub("margotbligh", "mbligh", .)
+dirname(data.di.ms2) <- x
+
+#palettes
+cold <- hcl.colors(n = 5, palette = "Cold")
+warm <- hcl.colors(n = 5, palette = "Warm")
+pretty3 <- c(warm[1], cold[1:2])
 #which runs do I want to plot?
 #03.02 - full digests
 #08.02 - full digest June, tSIM
@@ -9,7 +21,7 @@ load("20220211_RData.RData")
 #Load libraries
 library(tidyr) ; library(xcms) ; library(data.table) ; library(ggplot2)
 library(scales) ; library(ggsci) ; library(ggridges) ; library(ggpubr)
-library(reticulate) ; library(ggrepel)
+library(reticulate) ; library(ggrepel) ; library(MSnbase)
 
 #1: Load LC-MS data----
 #get filepaths
@@ -716,7 +728,7 @@ msms2.df <- msms2.df %>%
 msms2.df <- msms2.df %>% 
     dplyr::group_by(precursorIon, nce) %>% 
     dplyr::mutate(normalised_intensity = intensity/max(intensity))
-msms2.df.filt <- msms2.df %>% filter(normalised_intensity > 0.005)
+msms2.df.filt <- msms2.df %>% dplyr::filter(normalised_intensity > 0.005)
 
 #13: disulphated mannotriose------
 h3s2.df2 <- msms2.df %>% 
@@ -740,27 +752,38 @@ sug <- c("HSO4", "hex-2-sulphate-1: [M-H]-", "hex-3-sulphate-2: [M-2H]-2",
          "hex-1-sulphate-1: [M-H]-", "hex-1-sulphate-2: [M-2H]-2", 
          "hex-1-sulphate-3: [M-3H]-3",
          "hex-4-sulphate-3: [M-3H]-3", "hex-7-sulphate-6: [M-6H]-6")
+h3s2.df2$class <- ""
+h3s2.df2$class[h3s2.df2$label == "hex-3-sulphate-2: [M-2H]-2"] <- "precursor"
+h3s2.df2$class[h3s2.df2$label %in% c("HSO4", "hex-2-sulphate-1: [M-H]-",
+                                     "hex-1-sulphate-1: [M-H]-", 
+                                     "hex-1-sulphate-2: [M-2H]-2")] <- "expected"
+h3s2.df2$class[h3s2.df2$class == "" &
+                 h3s2.df2$label %in% sug] <- "not expected"
+h3s2.df2$class <- factor(h3s2.df2$class, levels = c("precursor",
+                                                    "expected", "not expected"))
 
+
+png(filename = "GH99_plots_202202/NCE_vs_intensity_disulphated-mannotriose_v1.png",
+    height = 6, width = 8, units = "in", res = 300)
 ggplot(data = h3s2.df2 %>% 
-           dplyr::filter(label %in% sug |
-                             mz_round == 89.023)) +
-    geom_line(aes(x = nce, y = log2(intensity), colour = sugar,
-                  group = sugar), lwd = 0.5) +
-    geom_point(aes(x = nce, y = log2(intensity), colour = sugar),
-               shape = 21, fill = "white", size = 2)
-ggplot(data = h3s2.df2 %>% 
-           dplyr::filter(label %in% sug |
-                             mz_round == 89.023)) +
-    geom_line(aes(x = nce, y = intensity, colour = sugar,
-                  group = sugar), lwd = 0.5) +
-    geom_point(aes(x = nce, y = intensity, colour = sugar),
-               shape = 21, fill = "white", size = 2) +
-    facet_wrap(~sugar, scales = "free_y")
+         dplyr::filter(label %in% sug)) +
+  geom_line(aes(x = nce, y = intensity, colour = class,
+                group = label), lwd = 0.5) +
+  geom_point(aes(x = nce, y = intensity, colour = class),
+             shape = 21, fill = "white", size = 2) +
+  facet_wrap(~label, scales = "free_y") +
+  scale_colour_manual(values = pretty3, name = "Class") +
+  theme_classic() +
+  theme(text = element_text(family = "Avenir"),
+        legend.position = "top")
+dev.off()
 
 #13: trisulphated mannotetraose------
 h4s3.df2 <- msms2.df %>% 
-    dplyr::filter(precursorIon == "trisulphated mannotetraose: [M-3H]-3")
-h4s3.df2$mz_round <- round(h3s2.df2$mz, 3)
+  dplyr::ungroup() %>% 
+  dplyr::filter(precursorIon == "trisulphated mannotetraose: [M-3H]-3" &
+                  !is.na(mz)) %>% 
+  mutate(mz_round =  round(mz, 3))
 
 #precursor
 h4s3.df2$sugar[h4s3.df2$mz_round == 301.029 |
@@ -780,35 +803,43 @@ h4s3.df2$label <- paste0(h4s3.df2$sugar, ": ", h4s3.df2$ion) %>%
 #others
 h4s3.df2$label[h4s3.df2$mz_round == 331.037] <- "hex-3-sulphate-2: [M-2H]-2"
 h4s3.df2$label[h4s3.df2$mz_round == 247.002 |
-                   h4s3.df2$mz_round == 247.004] <- "hex-3-sulphate-3: [M-3H]-3"
-
-
-h4s3.df2 %>% filter(label == "hex-5-sulphate-4: [M-4H]-4")
-
-x <- h4s3.df2 %>% filter(between(mz_round, 247.0, 247.02))
+                 h4s3.df2$mz_round == 247.004] <- "hex-3-sulphate-3: [M-3H]-3"
 
 
 sug <- c("hex-4-sulphate-3: [M-3H]-3", "HSO4", "hex-3-sulphate-2: [M-2H]-2",
          "hex-1-sulphate-2: [M-2H]-2", "hex-3-sulphate-3: [M-3H]-3",
-         "hex-5-sulphate-4: [M-4H]-4")
-
-sug <- c("hex-2-sulphate-1: [M-H]-", ,
-         "hex-1-sulphate-1: [M-H]-", , 
+         "hex-5-sulphate-4: [M-4H]-4", "hex-2-sulphate-1: [M-H]-",
+         "hex-1-sulphate-1: [M-H]-", 
          "hex-1-sulphate-3: [M-3H]-3",
-         "hex-4-sulphate-3: [M-3H]-3", "hex-7-sulphate-6: [M-6H]-6")
+         "hex-4-sulphate-3: [M-3H]-3", "hex-7-sulphate-6: [M-6H]-6",
+         "hex-7-sulphate-4: [M-4H]-4", "hex-6-sulphate-5: [M-5H]-5")
 
+h4s3.df2$class <- ""
+h4s3.df2$class[h4s3.df2$label == "hex-4-sulphate-3: [M-3H]-3"] <- "precursor"
+h4s3.df2$class[h4s3.df2$label %in% c("HSO4", "hex-2-sulphate-1: [M-H]-",
+                                     "hex-1-sulphate-1: [M-H]-", 
+                                     "hex-1-sulphate-2: [M-2H]-2",
+                                     "hex-1-sulphate-3: [M-3H]-3",
+                                     "hex-3-sulphate-2: [M-2H]-2",
+                                     "hex-3-sulphate-3: [M-3H]-3")] <- "expected"
+h4s3.df2$class[h4s3.df2$class == "" &
+                 h4s3.df2$label %in% sug] <- "not expected"
+h4s3.df2$class <- factor(h4s3.df2$class, levels = c("precursor",
+                                                    "expected", "not expected"))
+
+
+png(filename = "GH99_plots_202202/NCE_vs_intensity_trisulphated-mannotetraose_v1.png",
+    height = 6, width = 10, units = "in", res = 300)
 ggplot(data = h4s3.df2 %>% 
-           dplyr::filter(label %in% sug)) +
-    geom_line(aes(x = nce, y = log2(intensity), colour = label,
-                  group = label), lwd = 0.5) +
-    geom_point(aes(x = nce, y = log2(intensity), colour = label),
-               shape = 21, fill = "white", size = 2)
+         dplyr::filter(label %in% sug)) +
+  geom_line(aes(x = nce, y = intensity, colour = class,
+                group = label), lwd = 0.5) +
+  geom_point(aes(x = nce, y = intensity, colour = class),
+             shape = 21, fill = "white", size = 2) +
+  facet_wrap(~label, scales = "free_y") +
+  scale_colour_manual(values = pretty3, name = "Class") +
+  theme_classic() +
+  theme(text = element_text(family = "Avenir"),
+        legend.position = "top")
+dev.off()
 
-
-ggplot(data = h4s3.df2 %>% 
-           dplyr::filter(label %in% sug)) +
-    geom_line(aes(x = nce, y = normalised_intensity, colour = label,
-                  group = label), lwd = 0.5) +
-    geom_point(aes(x = nce, y = normalised_intensity, colour = label),
-               shape = 21, fill = "white", size = 2)
-    facet_wrap(~sugar, scales = "free_y")
