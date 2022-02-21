@@ -371,7 +371,7 @@ msms.df <- msms.df %>%
     dplyr::mutate(normalised_intensity = intensity/max(intensity))
 
 #7: Plots-----
-#disulphated mannotriose: [M-2H]-2 ----
+    #disulphated mannotriose: [M-2H]-2 ----
 h3s2.df <- msms.df %>% 
     dplyr::filter(precursorIon == "disulphated mannotriose: [M-2H]-2") %>% 
     dplyr::filter(normalised_intensity > 0.005)
@@ -412,7 +412,7 @@ ggplot(data = h3s2.df) +
 dev.off()
 
 
-#trisulphated mannotetraose: [M-3H]-3-----
+    #trisulphated mannotetraose: [M-3H]-3-----
 h4s3.df <- msms.df %>% 
     dplyr::filter(precursorIon == "trisulphated mannotetraose: [M-3H]-3") %>% 
     dplyr::filter(normalised_intensity > 0.001)
@@ -452,7 +452,7 @@ ggplot(data = h4s3.df) +
                                     hjust = 0.5))
 dev.off()
 
-#tetrasulphated mannopentaose: [M-4H]-4-----
+    #tetrasulphated mannopentaose: [M-4H]-4-----
 h5s4.df <- msms.df %>% 
     dplyr::filter(precursorIon == "tetrasulphated mannopentaose: [M-4H]-4") %>% 
     dplyr::filter(normalised_intensity > 0.005)
@@ -491,7 +491,7 @@ ggplot(data = h5s4.df) +
 dev.off()
 
 
-#pentasulphated mannohexaose: [M-5H]-5-----
+    #pentasulphated mannohexaose: [M-5H]-5-----
 h6s5.df <- msms.df %>% 
     dplyr::filter(precursorIon == "pentasulphated mannohexaose: [M-5H]-5") %>% 
     dplyr::filter(normalised_intensity > 0.005)
@@ -529,3 +529,286 @@ ggplot(data = h6s5.df) +
                                     hjust = 0.5))
 dev.off()
 
+
+#8: MSMS plots for mass spec group meeting----
+    #hexasulphated mannoheptaose: [M-6H]-6-----
+h7s6.df <- msms.df %>% 
+    dplyr::filter(precursorIon == "hexasulphated mannoheptaose: [M-6H]-6") %>% 
+    dplyr::filter(normalised_intensity > 0.005)
+h7s6.df <- h7s6.df[h7s6.df$name != "hex-6-sulphate-11",]
+
+h7s6.df$label <- paste0(h7s6.df$name, "\n", h7s6.df$ion) %>% 
+    sub("\\\n$", "", .)
+h7s6.df$label[round(h7s6.df$mz,2)== 271.08] <- "hex-7-sulphate-6\n[M-6H]-6"
+
+svg(filename = "GH99_plots_202202/hexasulphated_mannoheptaose-ms2_plot_v2.svg", 
+    width = 8, height = 6)
+cairo_pdf(filename = "GH99_plots_202202/hexasulphated_mannoheptaose-ms2_plot_v2.pdf", 
+    width = 8, height = 6)
+ggplot(data = h7s6.df) + 
+    geom_segment(aes(x=mz, xend=mz,  y=0, yend=normalised_intensity),
+                 lwd = 1) +
+    #precursor arrow
+    geom_point(aes(x = precursorMz, y = 0.02),shape = 25, size = 3,
+               fill = "#FEC000", colour = "black") +
+    #labels of fragments
+    coord_cartesian(clip = "off") +
+    geom_label_repel(data = h7s6.df[h7s6.df$label != "",],
+                     aes(x = mz, y = normalised_intensity, label = label),
+                     min.segment.length = 0, box.padding = 0.5, nudge_y = 0.1,
+                     max.overlaps = Inf,  xlim = c(0, 450), ylim = c(0.1, Inf),
+                     size = 2.5, segment.linetype = "dashed", 
+                     fill = alpha(c("white"),0.7),segment.colour = "#2BB6AF",
+                     family = "Avenir") +
+    #label mz values
+    geom_text(aes(x = mz, y = normalised_intensity, label = round(mz, 3)),
+              angle = 90, nudge_y = 0.08, size = 2,
+              family = "Avenir") +
+    ylim(0, 1.5) +
+    labs(x = expression(italic(m/z)), y = "Normalised intensity (a.u.)")+
+    scale_x_continuous(expand = expansion(c(0.3,0.2))) +
+    theme_classic() + 
+    theme(axis.text = element_text(size = 10,family = "Avenir"),
+          axis.title = element_text(size = 10,family = "Avenir LT 65 Medium"),
+          #panel.border = element_rect(colour = "black",size = 0.5,fill = NA),
+          plot.title = element_text(size = 10,family = "Avenir LT 65 Medium",
+                                    hjust = 0.5))
+dev.off()
+
+
+    #pentasulphated mannohexaose: [M-5H]-5-----
+cairo_pdf(filename = "GH99_plots_202202/pentasulphated_mannohexaose-ms2_plot_v2.pdf", 
+          width = 8, height = 6)
+ggplot(data = h6s5.df) + 
+    geom_segment(aes(x=mz, xend=mz,  y=0, yend=normalised_intensity),
+                 lwd = 1) +
+    #precursor arrow
+    geom_point(aes(x = precursorMz, y = 0.02),shape = 25, size = 3,
+               fill = "#FEC000", colour = "black") +
+    #labels of fragments
+    coord_cartesian(clip = "off") +
+    geom_label_repel(data = h6s5.df[h6s5.df$label != "",],
+                     aes(x = mz, y = normalised_intensity+0.1, label = label),
+                     min.segment.length = 0, box.padding = 0.5, nudge_y = 0.1,
+                     max.overlaps = Inf,  xlim = c(0, 450), ylim = c(0.1, Inf),
+                     size = 2.5, segment.linetype = "dashed", 
+                     fill = alpha(c("white"),0.7),segment.colour = "#2BB6AF",
+                     family = "Avenir") +
+    #label mz values
+    geom_text(aes(x = mz, y = normalised_intensity, label = round(mz, 3)),
+              angle = 90, nudge_y = 0.06, size = 2,
+              family = "Avenir") +
+    ylim(0, 1.5) +
+    labs(tag = "D") +
+    labs(x = expression(italic(m/z)), y = "Normalised intensity (a.u.)")+
+    scale_x_continuous(expand = expansion(c(0.3,0.2))) +
+    theme_classic() + 
+    theme(axis.text = element_text(size = 10,family = "Avenir"),
+          axis.title = element_text(size = 10,family = "Avenir LT 65 Medium"),
+          #panel.border = element_rect(colour = "black",size = 0.5,fill = NA),
+          plot.title = element_text(size = 10,family = "Avenir LT 65 Medium",
+                                    hjust = 0.5))
+dev.off()
+
+
+
+    #disulphated mannotriose: [M-2H]-2-----
+
+h3s2.df$label[round(h3s2.df$mz,2)== 331.06] <- "hex-3-sulphate-2\n[M-2H]-2"
+cairo_pdf(filename = "GH99_plots_202202/disulphated_mannotriose-ms2_plot_v2.pdf", 
+          width = 8, height = 6)
+ggplot(data = h3s2.df) + 
+    geom_segment(aes(x=mz, xend=mz,  y=0, yend=normalised_intensity),
+                 lwd = 1) +
+    #precursor arrow
+    geom_point(aes(x = precursorMz, y = 0.02),shape = 25, size = 3,
+               fill = "#FEC000", colour = "black") +
+    #labels of fragments
+    coord_cartesian(clip = "off") +
+    geom_label_repel(data = h3s2.df[h3s2.df$label != "",],
+                     aes(x = mz, y = normalised_intensity+0.1, label = label),
+                     min.segment.length = 0, box.padding = 0.5, nudge_y = 0.1,
+                     max.overlaps = Inf,  xlim = c(0, 450), ylim = c(0.1, Inf),
+                     size = 2.5, segment.linetype = "dashed", 
+                     fill = alpha(c("white"),0.7),segment.colour = "#2BB6AF",
+                     family = "Avenir") +
+    #label mz values
+    geom_text(aes(x = mz, y = normalised_intensity, label = round(mz, 3)),
+              angle = 90, nudge_y = 0.06, size = 2,
+              family = "Avenir") +
+    ylim(0, 1.5) +
+    labs(tag = "D") +
+    labs(x = expression(italic(m/z)), y = "Normalised intensity (a.u.)")+
+    scale_x_continuous(expand = expansion(c(0.3,0.2))) +
+    theme_classic() + 
+    theme(axis.text = element_text(size = 10,family = "Avenir"),
+          axis.title = element_text(size = 10,family = "Avenir LT 65 Medium"),
+          #panel.border = element_rect(colour = "black",size = 0.5,fill = NA),
+          plot.title = element_text(size = 10,family = "Avenir LT 65 Medium",
+                                    hjust = 0.5))
+dev.off()
+
+
+
+#9: Average ion intensities by collision energy-----
+#see which columns can be use to combine on
+data.di.ms2.f <- fData(data.di.ms2)
+#combine on filterString - contains precursor and ionisation enegery
+data.di.ms2.mean2 <- combineSpectra(data.di.ms2, fcol = "filterString", 
+                                    intensityFun = max, mzd = 0.005)
+
+#10: Extract averaged ms2 data as df----
+msms2.df <- data.frame(precursorMz = as.numeric(),
+                       nce = as.numeric(),
+                       mz = as.numeric(),
+                       intensity = as.numeric())
+for(i in 1:length(data.di.ms2.mean2)){
+    mz <- data.di.ms2.mean2[[i]]@mz
+    intensity <- data.di.ms2.mean2[[i]]@intensity
+    precursorMz <- rep(data.di.ms2.mean2[[i]]@precursorMz, length(mz))
+    nce <- rep(data.di.ms2.mean2[[i]]@collisionEnergy, length(mz))
+    
+    tmp <- data.frame(precursorMz = precursorMz, nce = nce,
+                      mz =mz,intensity = intensity)
+    msms2.df <- rbind(msms2.df, tmp)
+}
+
+msms2.df$precursorMz <- round(msms2.df$precursorMz, 2)
+
+msms2.df$precursorIon[msms2.df$precursorMz == 250.00] <- "disulphated mannobiose: [M-2H]-2"
+msms2.df$precursorIon[msms2.df$precursorMz == 271.00] <- "hexasulphated mannoheptaose: [M-6H]-6"
+msms2.df$precursorIon[msms2.df$precursorMz == 277.00] <- "pentasulphated mannohexaose: [M-5H]-5"
+msms2.df$precursorIon[msms2.df$precursorMz == 286.00] <- "tetrasulphated mannopentaose: [M-4H]-4"
+msms2.df$precursorIon[msms2.df$precursorMz == 301.00] <- "trisulphated mannotetraose: [M-3H]-3"
+msms2.df$precursorIon[msms2.df$precursorMz == 331.05] <- "disulphated mannotriose: [M-2H]-2"
+msms2.df$precursorIon[msms2.df$precursorMz == 452.05] <- "trisulphated mannotetraose: [M-2H]-2"
+msms2.df$precursorIon[msms2.df$precursorMz == 573.05] <- "tetrasulphated mannopentaose: [M-2H]-2"
+
+#11: Annotate ions-----
+predicted$mzmin <- as.numeric(predicted$mz) - 0.001
+predicted$mzmax <- as.numeric(predicted$mz) + 0.001
+names(predicted)[names(predicted)=="name"] <- "sugar"
+
+msms2.df_nopred <- msms2.df
+msms2.df$mzmin <- as.numeric(msms2.df$mz) - 0.001
+msms2.df$mzmax <- as.numeric(msms2.df$mz) + 0.001
+
+setDT(predicted); setDT(msms2.df)
+setkey(predicted, mzmin, mzmax)
+msms2.df <- foverlaps(msms2.df,predicted)
+
+#change NA values created during matching (features with no match) to be blank
+#remove extra columns
+msms2.df$mz <- NULL
+msms2.df$mzmin <- NULL
+msms2.df$mzmax <- NULL
+
+names(msms2.df) <- names(msms2.df) %>% 
+    sub("^i\\.", "", .)
+
+msms2.df$mzmin <- NULL
+msms2.df$mzmax <- NULL
+
+msms2.df <- msms2.df %>% 
+    replace_na(list("dp"="","sugar"="", "mass"= "", "formula" = "", "ion"= ""))
+
+#12: Normalise intensities----
+msms2.df <- msms2.df %>% 
+    dplyr::group_by(precursorIon, nce) %>% 
+    dplyr::mutate(normalised_intensity = intensity/max(intensity))
+msms2.df.filt <- msms2.df %>% filter(normalised_intensity > 0.005)
+
+#13: disulphated mannotriose------
+h3s2.df2 <- msms2.df %>% 
+    dplyr::filter(precursorIon == "disulphated mannotriose: [M-2H]-2")
+h3s2.df2$mz_round <- round(h3s2.df2$mz, 3)
+
+#precursor
+h3s2.df2$sugar[h3s2.df2$mz_round == 331.073 |
+                   h3s2.df2$mz_round == 331.052 |
+                   h3s2.df2$mz_round == 331.039] <- "hex-3-sulphate-2"
+h3s2.df2$ion[h3s2.df2$mz_round == 331.073 |
+                 h3s2.df2$mz_round == 331.052 |
+                 h3s2.df2$mz_round == 331.039] <- "[M-2H]-2"
+#HSO4
+h3s2.df2$sugar[h3s2.df2$mz_round == 96.963 ] <- "HSO4"
+
+h3s2.df2$label <- paste0(h3s2.df2$sugar, ": ", h3s2.df2$ion) %>% 
+    sub(":\\s$", "", .)
+
+sug <- c("HSO4", "hex-2-sulphate-1: [M-H]-", "hex-3-sulphate-2: [M-2H]-2",
+         "hex-1-sulphate-1: [M-H]-", "hex-1-sulphate-2: [M-2H]-2", 
+         "hex-1-sulphate-3: [M-3H]-3",
+         "hex-4-sulphate-3: [M-3H]-3", "hex-7-sulphate-6: [M-6H]-6")
+
+ggplot(data = h3s2.df2 %>% 
+           dplyr::filter(label %in% sug |
+                             mz_round == 89.023)) +
+    geom_line(aes(x = nce, y = log2(intensity), colour = sugar,
+                  group = sugar), lwd = 0.5) +
+    geom_point(aes(x = nce, y = log2(intensity), colour = sugar),
+               shape = 21, fill = "white", size = 2)
+ggplot(data = h3s2.df2 %>% 
+           dplyr::filter(label %in% sug |
+                             mz_round == 89.023)) +
+    geom_line(aes(x = nce, y = intensity, colour = sugar,
+                  group = sugar), lwd = 0.5) +
+    geom_point(aes(x = nce, y = intensity, colour = sugar),
+               shape = 21, fill = "white", size = 2) +
+    facet_wrap(~sugar, scales = "free_y")
+
+#13: trisulphated mannotetraose------
+h4s3.df2 <- msms2.df %>% 
+    dplyr::filter(precursorIon == "trisulphated mannotetraose: [M-3H]-3")
+h4s3.df2$mz_round <- round(h3s2.df2$mz, 3)
+
+#precursor
+h4s3.df2$sugar[h4s3.df2$mz_round == 301.029 |
+                   h4s3.df2$mz_round == 301.031 |
+                   h4s3.df2$mz_round == 301.055 |
+                   h4s3.df2$mz_round == 301.026] <- "hex-4-sulphate-3"
+h4s3.df2$ion[h4s3.df2$mz_round == 301.029 |
+                 h4s3.df2$mz_round == 301.031 |
+                 h4s3.df2$mz_round == 301.055 |
+                 h4s3.df2$mz_round == 301.026] <- "[M-3H]-3"
+#HSO4
+h4s3.df2$sugar[h4s3.df2$mz_round == 96.954 ] <- "HSO4"
+
+h4s3.df2$label <- paste0(h4s3.df2$sugar, ": ", h4s3.df2$ion) %>% 
+    sub(":\\s$", "", .)
+
+#others
+h4s3.df2$label[h4s3.df2$mz_round == 331.037] <- "hex-3-sulphate-2: [M-2H]-2"
+h4s3.df2$label[h4s3.df2$mz_round == 247.002 |
+                   h4s3.df2$mz_round == 247.004] <- "hex-3-sulphate-3: [M-3H]-3"
+
+
+h4s3.df2 %>% filter(label == "hex-5-sulphate-4: [M-4H]-4")
+
+x <- h4s3.df2 %>% filter(between(mz_round, 247.0, 247.02))
+
+
+sug <- c("hex-4-sulphate-3: [M-3H]-3", "HSO4", "hex-3-sulphate-2: [M-2H]-2",
+         "hex-1-sulphate-2: [M-2H]-2", "hex-3-sulphate-3: [M-3H]-3",
+         "hex-5-sulphate-4: [M-4H]-4")
+
+sug <- c("hex-2-sulphate-1: [M-H]-", ,
+         "hex-1-sulphate-1: [M-H]-", , 
+         "hex-1-sulphate-3: [M-3H]-3",
+         "hex-4-sulphate-3: [M-3H]-3", "hex-7-sulphate-6: [M-6H]-6")
+
+ggplot(data = h4s3.df2 %>% 
+           dplyr::filter(label %in% sug)) +
+    geom_line(aes(x = nce, y = log2(intensity), colour = label,
+                  group = label), lwd = 0.5) +
+    geom_point(aes(x = nce, y = log2(intensity), colour = label),
+               shape = 21, fill = "white", size = 2)
+
+
+ggplot(data = h4s3.df2 %>% 
+           dplyr::filter(label %in% sug)) +
+    geom_line(aes(x = nce, y = normalised_intensity, colour = label,
+                  group = label), lwd = 0.5) +
+    geom_point(aes(x = nce, y = normalised_intensity, colour = label),
+               shape = 21, fill = "white", size = 2)
+    facet_wrap(~sugar, scales = "free_y")
